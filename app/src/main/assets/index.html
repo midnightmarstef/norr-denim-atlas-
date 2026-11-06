@@ -1,0 +1,1057 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#0b1222" media="(prefers-color-scheme: dark)"><meta name="theme-color" content="#e9edf3">
+<title>NORR Denim Atlas — satellite</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@600;800&family=IBM+Plex+Sans:ital,wght@0,400;0,500;0,600;1,400&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout concept: a full-bleed indigo map is the stage. A floating search + filter-pill bar sits over it (Airbnb/Kayak),
+   a floating ledger panel on the right becomes a draggable bottom sheet on phones (Zesty/Wanderlog),
+   pins carry the drive time instead of a dot (Zillow), hovering a pin shows a preview card anchored to it,
+   and routes open with stat tiles and a nights-to-book banner (Placify/Rivian). */
+:root{
+  --bg:#e9edf3; --panel:#ffffff; --panel-2:#f2f5f9; --fg:#141c33; --muted:#5b6882; --line:#d5dce7;
+  --sea:#bfd0e2; --land:#eef2f7; --land-es:#dfe8f3; --border:#8da0bb; --grat:#aebfd3; --label:#45557a;
+  --accent:#b0652a; --accent-ink:#ffffff; --indigo:#2b4a8b; --route:#b0652a;
+  --c-mill:#2f58b8; --c-garment:#c23b3b; --c-finish:#1f8a8a; --c-hardware:#b7892c; --c-leather:#7b4a21;
+  --c-yarn:#6b7a99; --c-rd:#7a5bb5; --c-peer:#4f8a4f; --c-house:#2e8b57; --c-listing:#d99a00;
+  --ok:#2e8b57; --warn:#b7892c; --bad:#c23b3b;
+  --shadow:0 8px 28px rgba(20,28,51,.16); --shadow-sm:0 2px 8px rgba(20,28,51,.14);
+  --display:"Big Shoulders Display","Arial Narrow",Impact,sans-serif;
+  --body:"IBM Plex Sans","Helvetica Neue",Arial,sans-serif;
+  --mono:"IBM Plex Mono",Menlo,Consolas,monospace;
+  --sheet-w:400px; --sheet-h:50vh;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#0b1222; --panel:#121b31; --panel-2:#192441; --fg:#e9eef7; --muted:#95a3bf; --line:#283555;
+    --sea:#070d1b; --land:#172240; --land-es:#1f2e52; --border:#4e6394; --grat:#1a2644; --label:#a9b6d0;
+    --accent:#d9925a; --accent-ink:#13192b; --indigo:#93b3f2; --route:#e7ad70;
+    --c-mill:#7a9cf0; --c-garment:#ec7070; --c-finish:#52c5c5; --c-hardware:#e3b85a; --c-leather:#c08a5c;
+    --c-yarn:#a1b0cf; --c-rd:#b39aee; --c-peer:#8ac88a; --c-house:#62cf92; --c-listing:#f0c04a;
+    --ok:#62cf92; --warn:#e3b85a; --bad:#ec7070;
+    --shadow:0 10px 32px rgba(0,0,0,.5); --shadow-sm:0 2px 8px rgba(0,0,0,.45);
+    color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0b1222; --panel:#121b31; --panel-2:#192441; --fg:#e9eef7; --muted:#95a3bf; --line:#283555;
+  --sea:#070d1b; --land:#172240; --land-es:#1f2e52; --border:#4e6394; --grat:#1a2644; --label:#a9b6d0;
+  --accent:#d9925a; --accent-ink:#13192b; --indigo:#93b3f2; --route:#e7ad70;
+  --c-mill:#7a9cf0; --c-garment:#ec7070; --c-finish:#52c5c5; --c-hardware:#e3b85a; --c-leather:#c08a5c;
+  --c-yarn:#a1b0cf; --c-rd:#b39aee; --c-peer:#8ac88a; --c-house:#62cf92; --c-listing:#f0c04a;
+  --ok:#62cf92; --warn:#e3b85a; --bad:#ec7070;
+  --shadow:0 10px 32px rgba(0,0,0,.5); --shadow-sm:0 2px 8px rgba(0,0,0,.45);
+  color-scheme:dark;
+}
+html,body{height:100%}
+body{background:var(--bg);color:var(--fg);font-family:var(--body);font-size:14px;line-height:1.45;margin:0;overflow:hidden}
+*{box-sizing:border-box}
+button,input,select,textarea{font:inherit;color:inherit}
+a{color:var(--indigo)}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+@media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+h3{font-size:11.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);margin:0;font-weight:600}
+p{margin:0 0 8px}
+.sub{color:var(--muted);font-size:12px}
+.foot{color:var(--muted);font-size:12px;margin:10px 0 0}
+.empty{border:1px dashed var(--line);border-radius:14px;padding:16px;color:var(--muted);font-size:13px;text-align:center}
+.link{border:0;background:none;color:var(--indigo);cursor:pointer;font-size:12.5px;padding:0}
+.sh{display:flex;justify-content:space-between;align-items:baseline;gap:8px;margin:14px 0 8px}
+.sh:first-child{margin-top:4px}
+.tag{display:inline-flex;align-items:center;gap:4px;border-radius:6px;padding:1px 6px;font-size:10.5px;font-weight:600;letter-spacing:.05em;text-transform:uppercase;white-space:nowrap;vertical-align:middle}
+.tag.ok{background:color-mix(in srgb,var(--ok) 16%,transparent);color:var(--ok)}
+.tag.warn{background:color-mix(in srgb,var(--warn) 18%,transparent);color:var(--warn)}
+.tag.bad{background:color-mix(in srgb,var(--bad) 14%,transparent);color:var(--bad)}
+.tag.fly{background:var(--panel-2);color:var(--muted)}
+.tag.cat{background:color-mix(in srgb,var(--dot) 16%,transparent);color:var(--dot)}
+
+#app{position:relative;height:100%;overflow:hidden}
+#map{position:absolute;inset:0;background:var(--sea);z-index:0}
+#loading{position:absolute;inset:0;display:grid;place-items:center;z-index:5;color:var(--label);font-family:var(--display);font-size:22px;letter-spacing:.2em;text-transform:uppercase;pointer-events:none;opacity:.6}
+#note{position:absolute;left:12px;bottom:12px;z-index:900;background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:6px 10px;font-size:12px;color:var(--muted);box-shadow:var(--shadow-sm)}
+
+/* ---- floating top bar ---- */
+.topbar{position:absolute;top:max(12px,env(safe-area-inset-top,0px));left:max(12px,env(safe-area-inset-left,0px));right:calc(var(--sheet-w) + 24px + env(safe-area-inset-right,0px));z-index:900;display:flex;flex-direction:column;gap:8px;pointer-events:none}
+.topbar>*{pointer-events:auto}
+.bar1{display:flex;gap:8px;align-items:center;flex-wrap:nowrap}
+.brandchip{flex:none;background:var(--panel);border-radius:999px;padding:5px 14px 5px 6px;display:flex;align-items:center;gap:9px;box-shadow:var(--shadow-sm);border:1px solid var(--line);cursor:pointer}
+.brandchip .logo{width:30px;height:30px;border-radius:50%;background:var(--accent);display:grid;place-items:center;font-family:var(--display);font-weight:800;color:var(--accent-ink);font-size:13px;letter-spacing:.04em}
+.brandchip b{font-family:var(--display);font-size:19px;letter-spacing:.05em;text-transform:uppercase;line-height:1;display:block}
+.brandchip small{display:block;font-size:10px;color:var(--muted);letter-spacing:.1em;text-transform:uppercase;line-height:1;margin-top:3px}
+.searchpill{flex:1;min-width:0;max-width:420px;display:flex;align-items:center;gap:8px;background:var(--panel);border:1px solid var(--line);border-radius:999px;padding:0 14px;box-shadow:var(--shadow-sm);height:42px}
+.searchpill svg{flex:none;color:var(--muted)}
+.searchpill input{flex:1;min-width:0;border:0;background:none;outline:none;font-size:14px}
+.searchpill input::placeholder{color:var(--muted)}
+.pills{display:flex;gap:6px;overflow-x:auto;scrollbar-width:none;padding:2px 0 4px}
+.pills::-webkit-scrollbar{display:none}
+.pill{flex:none;display:inline-flex;align-items:center;gap:6px;border-radius:999px;padding:6px 11px;background:var(--panel);border:1px solid var(--line);box-shadow:var(--shadow-sm);font-size:12.5px;cursor:pointer;color:var(--fg);white-space:nowrap;transition:opacity .15s,transform .15s}
+.pill:hover{transform:translateY(-1px)}
+.pill i{width:8px;height:8px;border-radius:50%;background:var(--dot)}
+.pill[aria-pressed="false"]{opacity:.5;box-shadow:none}
+.pill.sep{width:1px;padding:0;border:0;background:var(--line);box-shadow:none;opacity:1;margin:6px 2px}
+.pill.sw{background:var(--panel-2)}
+.pill.sw[aria-pressed="true"]{background:var(--fg);color:var(--bg);border-color:var(--fg)}
+
+/* ---- sheet / panel ---- */
+.sheet{position:absolute;z-index:950;background:var(--panel);border:1px solid var(--line);box-shadow:var(--shadow);display:flex;flex-direction:column;min-width:0;overflow:hidden}
+.handle{display:none;height:22px;place-items:center;cursor:grab;touch-action:none;flex:none}
+.handle::before{content:"";width:40px;height:4px;border-radius:2px;background:var(--line)}
+.tabs{display:flex;gap:2px;padding:6px 8px 0;flex:none;border-bottom:1px solid var(--line)}
+.tabs button{flex:1;border:0;background:none;padding:8px 2px 10px;font-family:var(--display);font-weight:700;font-size:16px;letter-spacing:.07em;text-transform:uppercase;color:var(--muted);cursor:pointer;position:relative;border-radius:8px 8px 0 0}
+.tabs button[aria-selected="true"]{color:var(--fg)}
+.tabs button[aria-selected="true"]::after{content:"";position:absolute;left:22%;right:22%;bottom:-1px;height:3px;border-radius:2px 2px 0 0;background:var(--accent)}
+.body{position:relative;flex:1;min-height:0}
+.scroll{position:absolute;inset:0;overflow-y:auto;overflow-x:hidden;padding:10px 14px 28px;overscroll-behavior:contain}
+.scroll section[hidden]{display:none}
+#detailView{position:absolute;inset:0;background:var(--panel);overflow-y:auto;overflow-x:hidden;transform:translateX(102%);transition:transform .28s cubic-bezier(.2,.8,.2,1);z-index:2;overscroll-behavior:contain}
+#detailView.open{transform:none}
+@media (min-width:861px){
+  .sheet{top:12px;right:max(12px,env(safe-area-inset-right,0px));bottom:12px;width:var(--sheet-w);border-radius:18px}
+}
+@media (max-width:860px){
+  .topbar{right:max(12px,env(safe-area-inset-right,0px))}
+  .brandchip b{font-size:16px}
+  .brandchip small{display:none}
+  .sheet{left:0;right:0;bottom:0;height:var(--sheet-h);border-radius:18px 18px 0 0;transition:height .28s cubic-bezier(.2,.8,.2,1);padding-bottom:env(safe-area-inset-bottom,0px)}
+  .sheet.dragging{transition:none}
+  .handle{display:grid}
+  .tabs button{font-size:14.5px}
+  .leaflet-bottom{bottom:var(--sheet-h)}
+}
+
+/* ---- highlights & cards ---- */
+.hl{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin-bottom:4px}
+.hlc{border:1px solid var(--line);border-radius:14px;padding:10px 10px 8px;background:var(--panel);cursor:pointer;text-align:left;position:relative;overflow:hidden;min-width:0;display:flex;flex-direction:column;gap:2px;transition:transform .15s,box-shadow .15s}
+.hlc:hover{transform:translateY(-2px);box-shadow:var(--shadow)}
+.hlc::before{content:"";position:absolute;left:0;right:0;top:0;height:4px;background:var(--dot)}
+.hlc .k{font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.hlc .v{font-family:var(--display);font-weight:800;font-size:26px;line-height:1;font-variant-numeric:tabular-nums;white-space:nowrap}
+.hlc .n{font-size:11.5px;font-weight:600;line-height:1.2;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
+.list{display:flex;flex-direction:column;gap:6px}
+.card{display:grid;grid-template-columns:64px minmax(0,1fr);gap:10px;align-items:center;border:1px solid var(--line);border-radius:14px;padding:10px 10px 10px 14px;background:var(--panel);cursor:pointer;text-align:left;width:100%;transition:transform .15s,box-shadow .15s,border-color .15s;position:relative;overflow:hidden}
+.card:hover{transform:translateY(-1px);box-shadow:var(--shadow);border-color:var(--border)}
+.card.sel{border-color:var(--accent);background:color-mix(in srgb,var(--accent) 6%,var(--panel))}
+.card::before{content:"";position:absolute;left:0;top:0;bottom:0;width:5px;background:var(--dot)}
+.card .tbadge{font-family:var(--display);font-weight:800;font-size:21px;line-height:1;text-align:center;font-variant-numeric:tabular-nums;white-space:nowrap;letter-spacing:-.01em}
+.card .tbadge small{display:block;font-family:var(--mono);font-size:10px;color:var(--muted);margin-top:4px;font-weight:400;white-space:nowrap}
+.card .cbody{min-width:0;display:flex;flex-direction:column;gap:2px}
+.card .nm{font-weight:600;font-size:14px;line-height:1.2;display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.card .sub{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.card .why{font-size:12px;opacity:.85;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.card.sec{grid-template-columns:48px minmax(0,1fr);padding:7px 10px 7px 12px}
+.card.sec::before{width:3px;opacity:.7}
+.card.sec .tbadge{font-size:16px}
+.card.sec .nm{font-size:13px;font-weight:500}
+.card.sec .why{display:none}
+
+/* ---- detail ---- */
+.hero{position:relative;min-height:124px;padding:48px 14px 12px;display:flex;flex-direction:column;justify-content:flex-end;color:#fff;
+  background:
+    repeating-linear-gradient(45deg,rgba(255,255,255,.09) 0 2px,transparent 2px 7px),
+    repeating-linear-gradient(-45deg,rgba(0,0,0,.10) 0 1px,transparent 1px 6px),
+    linear-gradient(135deg,color-mix(in srgb,var(--dot) 70%,#0a1020),var(--dot))}
+.hero .back{position:absolute;left:10px;top:10px;border:0;background:rgba(0,0,0,.32);color:#fff;border-radius:999px;height:32px;padding:0 12px 0 10px;cursor:pointer;font-size:13px;display:inline-flex;align-items:center;gap:4px;backdrop-filter:blur(4px)}
+.hero .time{position:absolute;right:12px;top:12px;background:rgba(0,0,0,.35);backdrop-filter:blur(4px);border-radius:999px;padding:5px 10px;font-family:var(--mono);font-size:12px}
+.hero .cat{font-size:10.5px;letter-spacing:.16em;text-transform:uppercase;opacity:.9}
+.hero h2{margin:2px 0 0;font-family:var(--display);font-size:30px;font-weight:800;letter-spacing:.02em;line-height:1;text-wrap:balance;text-shadow:0 1px 2px rgba(0,0,0,.35)}
+.dbody{padding:12px 14px 28px}
+.where{color:var(--muted);font-size:12.5px}
+.unconf{color:var(--warn);font-weight:600}
+.tiles{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin:10px 0}
+.tiles.four{grid-template-columns:repeat(4,minmax(0,1fr))}
+.tiles.four .tile{padding:9px 8px}
+.tiles.four .tile b{font-size:20px}
+.tile{background:var(--panel-2);border-radius:12px;padding:9px 10px;min-width:0}
+.tile b{display:block;font-family:var(--display);font-size:24px;font-weight:800;line-height:1;font-variant-numeric:tabular-nums;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tile span{font-size:10px;color:var(--muted);letter-spacing:.08em;text-transform:uppercase;display:block;margin-top:3px}
+.tile.warn b{color:var(--warn)}
+.verdict{border-radius:12px;padding:9px 12px;font-size:12.5px;margin:8px 0;background:color-mix(in srgb,var(--ok) 14%,transparent);border-left:3px solid var(--ok)}
+.verdict.warn{background:color-mix(in srgb,var(--warn) 16%,transparent);border-left-color:var(--warn)}
+.verdict.bad{background:color-mix(in srgb,var(--bad) 14%,transparent);border-left-color:var(--bad)}
+.chips{display:flex;gap:6px;flex-wrap:wrap;margin:10px 0}
+.chipbtn{border:1px solid var(--line);background:var(--panel);border-radius:999px;padding:7px 12px;font-size:12.5px;cursor:pointer;text-decoration:none;color:var(--fg);display:inline-flex;align-items:center;gap:6px;white-space:nowrap;transition:transform .12s}
+.chipbtn:hover{transform:translateY(-1px);border-color:var(--border)}
+.chipbtn.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-ink);font-weight:600}
+.chipbtn.danger{color:var(--bad)}
+.dbody h3{margin:14px 0 6px}
+.dbody p{font-size:13.5px}
+
+/* ---- routes ---- */
+.presetrow{display:flex;gap:8px;overflow-x:auto;scroll-snap-type:x mandatory;padding:2px 14px 10px;margin:0 -14px;scrollbar-width:none}
+.presetrow::-webkit-scrollbar{display:none}
+.pcard{flex:none;width:172px;scroll-snap-align:start;border:1px solid var(--line);border-radius:14px;padding:10px;background:var(--panel);cursor:pointer;text-align:left;display:flex;flex-direction:column;gap:3px;min-height:126px;transition:transform .15s,box-shadow .15s}
+.pcard:hover{transform:translateY(-2px);box-shadow:var(--shadow)}
+.pcard.sel{border-color:var(--accent);background:color-mix(in srgb,var(--accent) 8%,var(--panel))}
+.pcard .ltr{font-family:var(--display);font-size:30px;font-weight:800;color:var(--accent);line-height:1}
+.pcard .nm{font-weight:600;font-size:13px;line-height:1.2}
+.pcard .sub{font-size:11px;line-height:1.3;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.pcard .meta{margin-top:auto;display:flex;gap:8px;font-family:var(--mono);font-size:11px;color:var(--muted);padding-top:6px;font-variant-numeric:tabular-nums}
+.pcard .meta b{color:var(--fg);font-weight:500}
+.banner{display:flex;gap:10px;align-items:center;border-radius:12px;padding:10px 12px;background:color-mix(in srgb,var(--warn) 16%,transparent);border:1px solid color-mix(in srgb,var(--warn) 40%,transparent);margin:8px 0;font-size:13px}
+.banner svg{flex:none;color:var(--warn)}
+.banner.ok{background:color-mix(in srgb,var(--ok) 12%,transparent);border-color:color-mix(in srgb,var(--ok) 35%,transparent)}
+.banner.ok svg{color:var(--ok)}
+.stoplist{display:flex;flex-direction:column;gap:4px}
+.stopi{display:grid;grid-template-columns:26px minmax(0,1fr) auto;gap:8px;align-items:center;border:1px solid var(--line);border-radius:10px;padding:6px 8px;background:var(--panel)}
+.stopi .n{width:24px;height:24px;border-radius:50%;background:var(--accent);color:var(--accent-ink);display:grid;place-items:center;font-family:var(--display);font-weight:800;font-size:13px}
+.stopi b{font-size:13px;display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.stopi .ctl{display:flex;gap:3px}
+.stopi .ctl button{border:0;background:var(--panel-2);border-radius:6px;width:26px;height:26px;cursor:pointer;color:var(--muted)}
+.stopi .ctl button:hover{color:var(--fg)}
+details.settings{border:1px solid var(--line);border-radius:12px;padding:8px 12px;margin-top:12px}
+details.settings summary{cursor:pointer;font-size:12.5px;color:var(--muted)}
+.sgrid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin:10px 0 4px}
+.sgrid label{font-size:10px;color:var(--muted);display:block;letter-spacing:.08em;text-transform:uppercase;margin-bottom:3px}
+.sgrid input{width:100%;border:1px solid var(--line);background:var(--panel-2);border-radius:8px;padding:6px 8px;font-family:var(--mono)}
+.itin{border:1px solid var(--line);border-radius:12px;overflow:hidden}
+.day{padding:10px 12px;border-top:1px solid var(--line)}
+.day:first-child{border-top:0}
+.day h4{margin:0 0 6px;font-family:var(--display);font-size:18px;letter-spacing:.05em;text-transform:uppercase;display:flex;justify-content:space-between;align-items:baseline}
+.day h4 span{font-family:var(--mono);font-size:12px;color:var(--muted);text-transform:none;letter-spacing:0}
+.step{display:grid;grid-template-columns:44px 10px minmax(0,1fr);gap:8px;font-size:13px;padding:3px 0;align-items:start}
+.step .tm{font-family:var(--mono);font-variant-numeric:tabular-nums;color:var(--muted);font-size:12px;padding-top:1px}
+.step .mk{width:10px;height:10px;border-radius:50%;background:var(--line);margin-top:5px}
+.step.visit .mk{background:var(--accent)}
+.step.leg .what{color:var(--muted)}
+.step.hotel{background:color-mix(in srgb,var(--warn) 14%,transparent);border-radius:8px;padding:6px 6px;margin:4px -6px}
+.step.hotel .mk{background:var(--warn)}
+
+/* ---- houses ---- */
+.buy{display:flex;flex-direction:column;gap:6px}
+.buyrow{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:4px 10px;align-items:center;border:1px solid var(--line);border-radius:12px;padding:9px 11px;cursor:pointer;background:var(--panel);transition:transform .15s,box-shadow .15s}
+.buyrow:hover{transform:translateY(-1px);box-shadow:var(--shadow)}
+.buyrow.flash{border-color:var(--accent)}
+.buyrow .nm{font-weight:600;font-size:13.5px}
+.buyrow .m2{font-family:var(--display);font-size:24px;font-weight:800;line-height:1;text-align:right;font-variant-numeric:tabular-nums}
+.buyrow .m2 small{font-family:var(--mono);font-size:10px;color:var(--muted);font-weight:400;margin-left:2px}
+.buyrow .bar{grid-column:1/-1;height:7px;border-radius:4px;background:var(--panel-2);overflow:hidden}
+.buyrow .bar i{display:block;height:100%;width:var(--w);border-radius:4px;background:linear-gradient(90deg,var(--c-house),color-mix(in srgb,var(--c-house) 55%,var(--accent)))}
+.buyrow .links{grid-column:1/-1;display:flex;gap:6px;flex-wrap:wrap}
+.buyrow .links a{font-size:11.5px;border:1px solid var(--line);border-radius:999px;padding:3px 9px;text-decoration:none;color:var(--fg);background:var(--panel-2)}
+.sw{display:inline-flex;align-items:center;gap:6px;font-size:12px;color:var(--muted);cursor:pointer}
+.lgrid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.lcard{border-radius:14px;overflow:hidden;border:1px solid var(--line);background:var(--panel);cursor:pointer;position:relative;text-align:left;padding:0;min-width:0}
+.lcard .ph{aspect-ratio:4/3;max-width:100%;background:var(--panel-2) center/cover no-repeat;display:grid;place-items:center;color:var(--muted);font-size:11px}
+.lcard .pr{position:absolute;left:8px;top:8px;background:var(--panel);border-radius:999px;padding:2px 8px;font-family:var(--mono);font-weight:500;font-size:12px;box-shadow:var(--shadow-sm)}
+.lcard .in{padding:8px 9px 9px}
+.lcard .nm{font-weight:600;font-size:12.5px;line-height:1.2;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
+.lcard .row{display:flex;justify-content:space-between;align-items:center;margin-top:4px;gap:6px}
+.lcard .del{border:0;background:none;color:var(--muted);cursor:pointer;font-size:11px;padding:0}
+.lcard .del:hover{color:var(--bad)}
+form.add{border:1px solid var(--line);border-radius:14px;padding:12px;background:var(--panel-2);display:grid;gap:8px;margin-bottom:10px}
+form.add label{font-size:10px;color:var(--muted);letter-spacing:.08em;text-transform:uppercase;display:block;margin-bottom:3px}
+form.add input,form.add select,form.add textarea{width:100%;border:1px solid var(--line);background:var(--panel);border-radius:8px;padding:7px 9px}
+form.add .two{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.status{font-size:12px;color:var(--muted)}
+.country-h{display:flex;align-items:baseline;gap:8px;margin:16px 0 6px}
+.country-h b{font-family:var(--display);font-size:20px;letter-spacing:.05em;text-transform:uppercase}
+
+/* ---- hover preview card ---- */
+#hover{position:absolute;left:0;top:0;z-index:960;width:240px;background:var(--panel);border:1px solid var(--line);border-radius:14px;box-shadow:var(--shadow);overflow:hidden;pointer-events:none;transition:opacity .12s;opacity:0;visibility:hidden}
+#hover.show{opacity:1;visibility:visible}
+#hover .img{height:120px;background:var(--panel-2) center/cover no-repeat}
+#hover .band{height:6px;background:var(--dot)}
+#hover .in{padding:8px 10px 10px}
+#hover .row{display:flex;justify-content:space-between;align-items:center;gap:8px}
+#hover .big{font-family:var(--display);font-size:22px;font-weight:800;line-height:1;font-variant-numeric:tabular-nums}
+#hover .nm{font-weight:600;font-size:13px;margin-top:4px;line-height:1.2}
+#hover .sub{font-size:11.5px}
+#hover .why{font-size:11.5px;margin-top:4px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+
+/* ===== Leaflet essentials (vector-only use) ===== */
+.leaflet-pane,.leaflet-tile,.leaflet-marker-icon,.leaflet-marker-shadow,.leaflet-tile-container,.leaflet-pane>svg,.leaflet-pane>canvas,.leaflet-zoom-box,.leaflet-image-layer,.leaflet-layer{position:absolute;left:0;top:0}
+.leaflet-container{overflow:hidden;-webkit-tap-highlight-color:transparent;outline-offset:1px;font-family:var(--body)}
+.leaflet-tile,.leaflet-marker-icon,.leaflet-marker-shadow{user-select:none;-webkit-user-drag:none}
+.leaflet-marker-icon,.leaflet-marker-shadow{display:block}
+.leaflet-container .leaflet-overlay-pane svg{max-width:none!important;max-height:none!important}
+.leaflet-container.leaflet-touch-zoom{touch-action:pan-x pan-y}
+.leaflet-container.leaflet-touch-drag{touch-action:none;touch-action:pinch-zoom}
+.leaflet-container.leaflet-touch-drag.leaflet-touch-zoom{touch-action:none}
+.leaflet-zoom-box{width:0;height:0;box-sizing:border-box;z-index:800}
+.leaflet-pane{z-index:400}.leaflet-tile-pane{z-index:200}.leaflet-overlay-pane{z-index:400}.leaflet-shadow-pane{z-index:500}.leaflet-marker-pane{z-index:600}.leaflet-tooltip-pane{z-index:650}.leaflet-popup-pane{z-index:700}
+.leaflet-map-pane canvas{z-index:100}.leaflet-map-pane svg{z-index:200}
+.leaflet-control{position:relative;z-index:800;pointer-events:auto;float:left;clear:both}
+.leaflet-top,.leaflet-bottom{position:absolute;z-index:1000;pointer-events:none}
+.leaflet-top{top:0}.leaflet-right{right:0}.leaflet-bottom{bottom:0}.leaflet-left{left:0}
+.leaflet-right .leaflet-control{float:right}
+.leaflet-zoom-animated{transform-origin:0 0}
+svg.leaflet-zoom-animated{will-change:transform}
+.leaflet-zoom-anim .leaflet-zoom-animated{transition:transform .25s cubic-bezier(0,0,.25,1)}
+.leaflet-zoom-anim .leaflet-zoom-hide{visibility:hidden}
+.leaflet-interactive{cursor:pointer}
+.leaflet-grab{cursor:grab}
+.leaflet-dragging .leaflet-grab,.leaflet-dragging .leaflet-grab .leaflet-interactive{cursor:grabbing}
+.leaflet-marker-icon,.leaflet-marker-shadow,.leaflet-image-layer,.leaflet-pane>svg path,.leaflet-tile-container{pointer-events:none}
+.leaflet-marker-icon.leaflet-interactive,.leaflet-image-layer.leaflet-interactive,.leaflet-pane>svg path.leaflet-interactive{pointer-events:auto}
+.leaflet-tooltip{position:absolute;padding:6px 9px;background:var(--panel);border:1px solid var(--line);border-radius:8px;color:var(--fg);white-space:nowrap;user-select:none;pointer-events:none;box-shadow:var(--shadow);font-size:12px;line-height:1.3}
+.leaflet-tooltip.leaflet-interactive{pointer-events:auto}
+.leaflet-tooltip-bottom{margin-top:8px}.leaflet-tooltip-top{margin-top:-8px}.leaflet-tooltip-left{margin-left:-8px}.leaflet-tooltip-right{margin-left:8px}
+.leaflet-tooltip .tt-n{font-weight:600}
+.leaflet-tooltip .tt-s{color:var(--muted);font-family:var(--mono);font-size:11px}
+.leaflet-tooltip.house-tip{white-space:normal;width:220px;padding:8px}
+.house-tip img{width:100%;height:120px;object-fit:cover;border-radius:6px;display:block;margin-bottom:6px}
+.house-tip .pr{font-family:var(--mono);font-weight:500;font-size:14px}
+.house-tip .nm{font-weight:600}
+.house-tip .sub{color:var(--muted);font-size:11px}
+
+
+
+/* ---- map vector styling ---- */
+path.land{fill:var(--land);stroke:var(--border);stroke-width:.6;fill-opacity:1}
+path.land.es{fill:var(--land-es)}
+path.region{fill:none;stroke:var(--border);stroke-width:.5;stroke-dasharray:3 3;opacity:.7}
+path.grat{fill:none;stroke:var(--grat);stroke-width:.5}
+path.spoke{stroke:var(--route);stroke-width:2;fill:none;stroke-dasharray:6 5;opacity:.9}
+path.routeline{stroke:var(--route);stroke-width:3.5;fill:none;opacity:.95;stroke-linecap:round;stroke-linejoin:round}
+path.routeline.halo{stroke:var(--sea);stroke-width:8;opacity:.75}
+.lbl{font-family:var(--body);color:var(--label);font-size:11px;white-space:nowrap;pointer-events:none;letter-spacing:.02em;text-shadow:0 0 3px var(--land),0 0 3px var(--land)}
+.lbl.country{font-family:var(--display);font-weight:600;font-size:15px;letter-spacing:.2em;text-transform:uppercase;opacity:.5}
+.lbl.city{opacity:.85}
+.lbl.city::before{content:"";display:inline-block;width:4px;height:4px;border-radius:50%;background:var(--label);margin-right:4px;vertical-align:middle}
+.z-low .lbl.city{display:none}
+.lbl.city.minor{display:none}
+.z-high .lbl.city.minor{display:block}
+.z-high .lbl.country{display:none}
+
+/* ---- pins ---- */
+.pinwrap{position:relative}
+.pin{position:absolute;left:0;top:0;transform:translate(-50%,calc(-100% - 7px)) scale(var(--s,1));background:var(--panel);color:var(--fg);border:2px solid var(--dot);border-radius:999px;padding:2px 8px;font-family:var(--mono);font-size:11.5px;font-weight:500;line-height:1.4;white-space:nowrap;box-shadow:var(--shadow-sm);transition:transform .12s,background .12s;cursor:pointer;font-variant-numeric:tabular-nums}
+.pin::after{content:"";position:absolute;left:50%;bottom:-6px;width:8px;height:8px;background:var(--dot);transform:translateX(-50%) rotate(45deg);border-radius:1px}
+.pin .nm{position:absolute;left:calc(100% + 7px);top:50%;transform:translateY(-50%);font-family:var(--body);font-weight:600;font-size:11px;color:var(--fg);text-shadow:0 0 3px var(--land),0 0 3px var(--land),0 0 4px var(--land);display:none;pointer-events:none}
+.z-high .pin .nm{display:block}
+.leaflet-marker-icon:hover .pin{--s:1.1}
+.pin.sel{background:var(--dot);color:#fff;box-shadow:0 0 0 4px color-mix(in srgb,var(--dot) 30%,transparent),var(--shadow-sm)}
+.pin.sel .nm{color:var(--fg)}
+.pin.fly{border-style:dashed}
+.pin.unconf{border-style:dotted}
+.pin.sm{padding:0;width:12px;height:12px;background:var(--dot);border:2px solid var(--panel);transform:translate(-50%,-50%) scale(var(--s,1));box-shadow:0 0 0 1px color-mix(in srgb,var(--dot) 50%,transparent)}
+.pin.sm::after{display:none}
+.pin.sm .pl{display:none}
+.pin.sm .nm{color:var(--muted);font-weight:500}
+.z-high .pin.sm{width:auto;height:auto;padding:1px 7px;background:var(--panel);border-color:var(--dot);transform:translate(-50%,calc(-100% - 7px)) scale(var(--s,1));font-size:10.5px;color:var(--fg)}
+.z-high .pin.sm .pl{display:inline}
+.z-high .pin.sm::after{display:block}
+.z-high .pin.sm.sel{background:var(--dot);color:#fff}
+.z-low .pin.sm{display:none}
+.pin.home{background:var(--accent);border-color:var(--accent);color:var(--accent-ink);font-family:var(--display);font-weight:800;font-size:14px;letter-spacing:.06em;padding:3px 11px}
+.pin.home::after{background:var(--accent)}
+.pin.house{border-color:var(--c-house);font-size:11px;display:inline-flex;align-items:center;gap:4px}
+.pin.house svg{color:var(--c-house)}
+.pin.house::after{background:var(--c-house)}
+.pin.photo{width:42px;height:42px;padding:0;border-radius:50%;border:3px solid var(--c-listing);overflow:hidden;background:var(--panel-2)}
+.pin.photo img{width:100%;height:100%;object-fit:cover;display:block}
+.pin.photo::after{background:var(--c-listing)}
+.pin.num{background:var(--accent);border-color:var(--panel);color:var(--accent-ink);font-family:var(--display);font-weight:800;font-size:14px;width:26px;height:26px;padding:0;display:grid;place-items:center;transform:translate(-50%,-50%);animation:pop .35s cubic-bezier(.3,1.4,.5,1) both;cursor:default}
+.pin.num::after{display:none}
+.pin.bed{background:var(--warn);border-color:var(--panel);color:#1a1200;width:26px;height:26px;padding:0;display:grid;place-items:center;transform:translate(-50%,calc(-100% - 7px));animation:pop .35s .6s cubic-bezier(.3,1.4,.5,1) both;cursor:default}
+.pin.bed::after{background:var(--warn)}
+@keyframes pop{from{opacity:0;--s:0;transform:translate(-50%,-50%) scale(0)}to{opacity:1}}
+.leaflet-bar{box-shadow:var(--shadow-sm);border-radius:10px;overflow:hidden;border:1px solid var(--line)}
+.leaflet-bar a{background:var(--panel);border-bottom:1px solid var(--line);width:32px;height:32px;line-height:32px;display:block;text-align:center;text-decoration:none;color:var(--fg);font:600 18px var(--mono)}
+.leaflet-bar a:last-child{border-bottom:0}
+.leaflet-bar a.leaflet-disabled{opacity:.4;cursor:default}
+.leaflet-left .leaflet-control{margin-left:max(12px,env(safe-area-inset-left,0px))}
+.leaflet-bottom .leaflet-control{margin-bottom:12px}
+/* ---- satellite edition extras ---- */
+.mode-sat .pin .nm,.mode-streets .pin .nm{text-shadow:0 0 3px #000,0 0 3px #000,0 0 5px #000;color:#fff}
+.mode-streets .pin .nm{color:#1a2235;text-shadow:0 0 3px #fff,0 0 3px #fff,0 0 5px #fff}
+.mode-sat .lbl,.mode-streets .lbl{display:none}
+.mode-sat path.routeline.halo{stroke:#000;opacity:.5}
+.mode-sat path.spoke,.mode-sat path.routeline{stroke:#ffb86b}
+.leaflet-container{background:var(--sea);font-family:var(--body)}
+.leaflet-container a{color:var(--indigo)}
+.leaflet-control-layers{background:var(--panel);border:1px solid var(--line);border-radius:10px;box-shadow:var(--shadow-sm);color:var(--fg);font-size:12.5px}
+.leaflet-control-layers-toggle{width:32px;height:32px;background-size:20px}
+.leaflet-control-layers-expanded{padding:8px 12px}
+.leaflet-control-layers label{display:block;padding:2px 0;cursor:pointer}
+.leaflet-control-attribution{font-size:10px;background:color-mix(in srgb,var(--panel) 85%,transparent);color:var(--muted);padding:2px 6px}
+.leaflet-control-attribution a{color:var(--muted)}
+@media (min-width:861px){.leaflet-bottom.leaflet-right{right:calc(var(--sheet-w) + 24px)}}
+.live{font-size:10px;color:var(--ok);letter-spacing:.06em;text-transform:uppercase;font-weight:600}
+</style>
+</head>
+<body>
+<div id="app">
+  <div id="map">
+    <div id="loading">Dyeing the map…</div>
+    <div id="note" hidden></div>
+  </div>
+  <div id="hover" aria-hidden="true"></div>
+
+  <header class="topbar">
+    <div class="bar1">
+      <button class="brandchip" id="homeBtn" title="Recentre on Castalla"><span class="logo">N</span><span><b>Denim Atlas</b><small>Satellite · live roads</small></span></button>
+      <label class="searchpill"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg><input id="q" type="search" placeholder="Search a company, town or material" aria-label="Search places"></label>
+    </div>
+    <div class="pills" id="pills"></div>
+  </header>
+
+  <aside class="sheet" id="sheet" data-state="half">
+    <div class="handle" id="handle" aria-label="Drag to resize"></div>
+    <nav class="tabs" role="tablist">
+      <button role="tab" aria-selected="true" data-tab="explore">Explore</button>
+      <button role="tab" aria-selected="false" data-tab="routes">Routes</button>
+      <button role="tab" aria-selected="false" data-tab="houses">Houses</button>
+      <button role="tab" aria-selected="false" data-tab="abroad">Abroad</button>
+    </nav>
+    <div class="body">
+      <div class="scroll" id="scroll">
+        <section id="sec-explore">
+          <div id="highlights" class="hl"></div>
+          <div id="exploreList"></div>
+          <p class="foot">Times start as road estimates and switch to live routed times (marked <span class="live">live</span>) as you open places and routes; the line then follows the real road. Dotted pins are sites I couldn't confirm — ring before you drive.</p>
+        </section>
+        <section id="sec-routes" hidden>
+          <div class="sh"><h3>Loops from Castalla</h3><span class="sub">tap one to plan it</span></div>
+          <div class="presetrow" id="presetrow"></div>
+          <div id="routeBox"></div>
+          <details class="settings">
+            <summary>Day settings</summary>
+            <div class="sgrid">
+              <div><label for="sStart">Leave</label><input id="sStart" type="time" value="08:00"></div>
+              <div><label for="sVisit">Per visit (min)</label><input id="sVisit" type="number" min="15" step="15" value="90"></div>
+              <div><label for="sMax">Max drive/day (min)</label><input id="sMax" type="number" min="60" step="30" value="420"></div>
+            </div>
+            <p class="foot">A day ends when the next leg would pass 20:30 or your driving cap. Legs longer than the cap get a stopover near the closest city.</p>
+          </details>
+        </section>
+        <section id="sec-houses" hidden>
+          <div class="sh"><h3>What €100,000 buys</h3><label class="sw"><input type="checkbox" id="houseLayer" checked> show on map</label></div>
+          <p class="foot" style="margin:0 0 8px">Approximate asking €/m² from 2025 listings, so you can compare towns before opening a portal. Tap a town to fly there.</p>
+          <div id="towns" class="buy"></div>
+          <div class="sh"><h3>Saved listings</h3><span><button class="link" id="exportBtn" type="button">Export</button> · <label class="link" style="cursor:pointer">Import<input type="file" id="importFile" accept="application/json" hidden></label> · <button class="link" id="toggleAdd" type="button">+ Save a listing</button></span></div>
+          <form class="add" id="addForm" hidden>
+            <div><label for="lTitle">Listing</label><input id="lTitle" required placeholder="Casa de pueblo, 3 hab, patio"></div>
+            <div class="two">
+              <div><label for="lTown">Town</label><select id="lTown"></select></div>
+              <div><label for="lPrice">Price €</label><input id="lPrice" type="number" min="0" step="500" placeholder="79000"></div>
+            </div>
+            <div><label for="lUrl">Listing link</label><input id="lUrl" type="url" placeholder="https://www.idealista.com/inmueble/…"></div>
+            <div><label for="lNotes">Notes</label><textarea id="lNotes" rows="2" placeholder="Needs roof work · 25 min to Banyeres · garage for the bike"></textarea></div>
+            <div><label for="lPhotos">Photos</label><input id="lPhotos" type="file" accept="image/*" multiple></div>
+            <div class="chips" style="margin:0"><button class="chipbtn primary" type="submit" id="saveBtn">Save listing</button><button class="chipbtn" type="button" id="cancelAdd">Cancel</button></div>
+            <div class="status" id="saveStatus"></div>
+          </form>
+          <div id="listings" class="lgrid"></div>
+          <p class="foot">Hover or tap a photo pin on the map for a preview without opening the portal. Listings live in this browser — use Export to move them to another device.</p>
+        </section>
+        <section id="sec-abroad" hidden>
+          <p class="foot" style="margin:4px 0 0">Grouped by country, nearest first. Dashed pins are fly-in destinations.</p>
+          <div id="abroad"></div>
+        </section>
+      </div>
+      <div id="detailView" aria-live="polite"></div>
+    </div>
+  </aside>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/d3/3.5.17/d3.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/topojson/1.6.9/topojson.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/datamaps/0.5.9/datamaps.world.hires.min.js"></script>
+<script>window.__WORLD_TOPO = (window.Datamap && Datamap.prototype && Datamap.prototype.worldTopo) || null;</script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/datamaps/0.5.9/datamaps.esp.min.js"></script>
+<script>window.__ESP_TOPO = (window.Datamap && Datamap.prototype && Datamap.prototype.espTopo) || null;</script>
+<script>
+(function(){
+'use strict';
+/* ============================ DATA ============================ */
+const HOME = {id:'home', name:'Castalla', town:'Castalla', country:'ES', lat:38.5964, lng:-0.6714, home:true};
+
+const CATS = {
+  mill:     {label:'Denim mills',           dot:'var(--c-mill)'},
+  garment:  {label:'Jeans makers',          dot:'var(--c-garment)'},
+  finish:   {label:'Laundry & finishing',   dot:'var(--c-finish)'},
+  hardware: {label:'Rivets, buttons & zips',dot:'var(--c-hardware)', sec:true},
+  leather:  {label:'Leather & tanneries',   dot:'var(--c-leather)',  sec:true},
+  yarn:     {label:'Yarn & fibre',          dot:'var(--c-yarn)',     sec:true},
+  rd:       {label:'Labs, institutes & shows', dot:'var(--c-rd)',    sec:true},
+  peer:     {label:'Peer brands & ateliers',dot:'var(--c-peer)',     sec:true},
+};
+const COUNTRY = {ES:'Spain', PT:'Portugal', FR:'France', IT:'Italy', NL:'Netherlands', DE:'Germany', CH:'Switzerland', GB:'United Kingdom', TR:'Turkey', TN:'Tunisia'};
+
+// drive = minutes from Castalla by road (hand-set where I know the road); web = site; unconf = site location not confirmed
+const PLACES = [
+ // ---------- SPAIN ----------
+ {id:'royo', name:'Tejidos Royo', cat:'mill', town:'Picassent', region:'Valencia', country:'ES', lat:39.3633, lng:-0.4603, drive:80,
+  what:'Spain’s main denim mill (family-run since 1903). Foam-dyed "Dry Indigo" denim, rigid and stretch qualities, lab-dips in house.',
+  why:'The only serious denim weaver within a morning’s drive. Worth asking for their heaviest rigid qualities and whether they can run a narrow-loom or selvedge-look line for you.',
+  web:'https://www.tejidosroyo.com'},
+ {id:'jeanologia', name:'Jeanologia', cat:'finish', town:'Paterna', region:'Valencia', country:'ES', lat:39.5028, lng:-0.4406, drive:90,
+  what:'Laser, ozone and e-flow finishing technology used by Levi’s, Uniqlo and most big laundries. Their Valencia HQ has a lab where washes and laser patterns are developed.',
+  why:'The place to prototype a NORR fade or a laser-marked back pocket before you commit a batch to a laundry. Pairs with a Tejidos Royo visit (25 min apart).',
+  web:'https://www.jeanologia.com'},
+ {id:'ferre', name:'Hilaturas Ferre', cat:'yarn', town:'Banyeres de Mariola', region:'Alicante', country:'ES', lat:38.7167, lng:-0.6558, drive:20,
+  what:'Spinner founded 1947, pioneer of recycled-cotton yarn; three plants in Banyeres de Mariola.',
+  why:'Twenty minutes from your door. Useful for recycled or coloured yarn for linings, pocket bags and any knit pieces alongside the denim.',
+  web:'https://www.ferreyarns.com'},
+ {id:'recover', name:'Recover', cat:'yarn', town:'Banyeres de Mariola', region:'Alicante', country:'ES', lat:38.7230, lng:-0.6490, drive:20,
+  what:'Spin-off of Ferre: mechanically recycled cotton fibre, 16,000 t/yr plant in Banyeres, used by denim mills worldwide (ADM, Prosperity).',
+  why:'If NORR ever wants a recycled-content story, the fibre comes from next door.',
+  web:'https://recoverfiber.com'},
+ {id:'aitex', name:'AITEX', cat:'rd', town:'Alcoy', region:'Alicante', country:'ES', lat:38.6983, lng:-0.4736, drive:28,
+  what:'Valencian textile research institute: lab testing (abrasion, colour fastness, tensile), certification, and pilot dyeing/finishing plants.',
+  why:'Test your 21 oz denim and rivet pull strength here instead of guessing. Also the people who know every mill and finisher in the Alcoy–Ontinyent cluster.',
+  web:'https://www.aitex.es'},
+ {id:'ateval', name:'ATEVAL — Ontinyent textile cluster', cat:'rd', town:'Ontinyent', region:'Valencia', country:'ES', lat:38.8222, lng:-0.6072, drive:45,
+  what:'The Valencian textile employers’ association; 400+ member firms (weavers, dyers, finishers, sewing workshops) in the Alcoy–Ontinyent–Bocairent valley.',
+  why:'Ask them for a list of sewing workshops that can handle heavy denim with chainstitch and bartack machines — they exist in this valley but don’t advertise.',
+  web:'https://www.ateval.com'},
+ {id:'capitan', name:'Capitán Denim', cat:'garment', town:'Madrigueras', region:'Albacete', country:'ES', lat:39.2367, lng:-1.8086, drive:110,
+  what:'Family jeans factory since 1973: pattern, cut, sew, dye, wash and finish all in one workshop in La Mancha. Runs its own sustainable brand.',
+  why:'The nearest complete jeans factory to Castalla. Exactly the kind of workshop that could sew heavy selvedge in small batches — bring a sample pair and your rivets.',
+  web:'https://capitandenim.com'},
+ {id:'ykk', name:'YKK España — Tortosa plant', cat:'hardware', town:'Tortosa', region:'Tarragona', country:'ES', lat:40.8126, lng:0.5211, drive:195,
+  what:'YKK’s Spanish factory (60,000 m², ~180 staff): zip manufacturing and snap-button assembly. Sales office in Barcelona.',
+  why:'Brass zips for jackets and the odd jean. Visits usually go through the Barcelona office first.',
+  web:'https://www.ykkeurope.com'},
+ {id:'ibq', name:'IBQ Textiles', cat:'mill', town:'Sant Quirze del Vallès', region:'Barcelona', country:'ES', lat:41.5333, lng:2.0833, drive:290,
+  what:'Vertical weaver (own warping, weaving, dyeing, finishing): denim, twills and canvas for workwear and fashion; works with Zara, Mango, Mascot.',
+  why:'A second Spanish denim source and a strong option for heavy workwear twill or canvas for linings and trims.',
+  web:'https://www.ibqfabrics.com'},
+ {id:'badia', name:'Curtidos Badia', cat:'leather', town:'Igualada', region:'Barcelona', country:'ES', lat:41.5789, lng:1.6172, drive:280,
+  what:'Tannery founded 1889, chrome-tanned bovine leather, small batches, first Igualada tannery with ICEC certification.',
+  why:'Igualada is Spain’s tanning capital (about 30 tanneries in the Rec quarter plus the leather museum). Badia is the reference for colour-matched cowhide for patches and belt loops.',
+  web:'https://www.curtidosbadia.com'},
+ {id:'muntadas', name:'Curtidos Muntadas', cat:'leather', town:'Igualada', region:'Barcelona', country:'ES', lat:41.5830, lng:1.6100, drive:280,
+  what:'Igualada tannery; listed in the Catalonia industry suppliers directory.',
+  why:'Second stop on an Igualada tannery morning — ask for vegetable-tanned shoulder for stamped patches.'},
+ {id:'juanmartinez', name:'Hijos de Juan Martínez', cat:'leather', town:'Lorca', region:'Murcia', country:'ES', lat:37.6714, lng:-1.7017, drive:110,
+  what:'Tannery since 1943 making leather for footwear and leather goods; Lorca’s tanning district has a dozen more.',
+  why:'Closest leather cluster to Castalla (under two hours). Good first stop for Spanish cowhide for NORR patches.',
+  web:'https://www.google.com/search?q=Hijos+de+Juan+Mart%C3%ADnez+curtidos+Lorca'},
+ {id:'martinezleal', name:'Curtidos Martínez Leal', cat:'leather', town:'Lorca', region:'Murcia', country:'ES', lat:37.6600, lng:-1.7200, drive:112,
+  what:'Tannery founded 1988 in the Saprelorca industrial park, Lorca.',
+  why:'Same trip as Hijos de Juan Martínez; compare finishes and minimums on the same day.'},
+ {id:'jacobogomez', name:'Curtidos Jacobo Gómez', cat:'leather', town:'Lorca', region:'Murcia', country:'ES', lat:37.6800, lng:-1.7000, drive:112,
+  what:'Finished bovine leather for footwear and leather goods, Lorca.',
+  why:'Third tannery on the Lorca loop.'},
+ {id:'ubrique', name:'Ubrique leather-goods district', cat:'leather', town:'Ubrique', region:'Cádiz', country:'ES', lat:36.6778, lng:-5.4461, drive:360,
+  what:'Spain’s leather-goods capital: hundreds of small marroquinería workshops making for luxury houses, plus patch and label embossers.',
+  why:'If you want embossed leather patches and belts made properly in Spain, this is where the hands are. Far enough to need a night.',
+  web:'https://www.google.com/search?q=Ubrique+marroquiner%C3%ADa+talleres'},
+ {id:'unitin', name:'Unitin (Industrias Morera)', cat:'yarn', town:'Barcelona area', region:'Barcelona', country:'ES', lat:41.47, lng:2.10, drive:290, unconf:true,
+  what:'Indigo-dyed cotton yarn (including recycled) for denim-look knits and sewing details; a regular at Denim Première Vision.',
+  why:'Indigo yarn for a NORR knit or a dyed selvedge-ID thread. Confirm the site before driving.',
+  web:'https://www.google.com/search?q=Unitin+Industrias+Morera+indigo+yarn'},
+ {id:'disgosa', name:'Botones Disgosa', cat:'hardware', town:'Catalonia (to confirm)', region:'Barcelona', country:'ES', lat:41.40, lng:1.95, drive:290, unconf:true,
+  what:'Spanish button maker exhibiting at Première Vision Paris (accessories).',
+  why:'One of the few Spanish names in metal buttons. Confirm the factory address first.',
+  web:'https://www.google.com/search?q=Botones+Disgosa'},
+ {id:'santanderina', name:'Textil Santanderina — Evlox denim', cat:'mill', town:'Cabezón de la Sal', region:'Cantabria', country:'ES', lat:43.3083, lng:-4.2333, drive:470,
+  what:'Vertical mill, ~17 million m/yr across three northern plants. Denim lines: Pure Indigo (aniline-free) and Advanced Black.',
+  why:'Spain’s other real denim mill. An overnight trip, or combine with a Bilbao flight.',
+  web:'https://www.textilsantanderina.com'},
+ // ---------- PORTUGAL ----------
+ {id:'troficolor', name:'Troficolor Denim Makers', cat:'mill', town:'Trofa (Vale do Ave)', region:'Porto', country:'PT', lat:41.3372, lng:-8.5596, drive:600,
+  what:'Portugal’s denim leader since 1956; known for selvedge and garment-dye expertise, showroom with washed samples, design department.',
+  why:'Closest selvedge-literate mill to Spain. A Vale do Ave trip also puts you next to the sewing factories and laundries.',
+  web:'https://www.troficolor.pt'},
+ {id:'ivn', name:'IVN Indústria', cat:'finish', town:'Vila Nova de Famalicão', region:'Braga', country:'PT', lat:41.4089, lng:-8.5200, drive:600,
+  what:'Industrial laundry, dyeing and special finishes plus full private-label production, since 1987, in the heart of Vale do Ave.',
+  why:'A laundry that also sews: one partner for wash development and small runs.',
+  web:'https://www.google.com/search?q=IVN+Industria+Famalic%C3%A3o+denim'},
+ {id:'vieirafaria', name:'Vieira & Faria', cat:'garment', town:'Braga', region:'Braga', country:'PT', lat:41.5454, lng:-8.4265, drive:610,
+  what:'Denim garment factory since 1996, about 30 people, makes for Scandinavian direct-to-consumer brands.',
+  why:'Small-brand friendly size. Bring your specs for 21 oz and ask about machine capacity.',
+  web:'https://www.google.com/search?q=Vieira+%26+Faria+Braga+denim'},
+ {id:'jeansfactory', name:'The Jeans Factory', cat:'garment', town:'Trofa', region:'Porto', country:'PT', lat:41.3300, lng:-8.5500, drive:600,
+  what:'Jeans manufacturer founded 2020 in Trofa, producing for SANVT and other European brands.',
+  why:'Newer factory with modern machines; same trip as Troficolor.',
+  web:'https://www.google.com/search?q=The+Jeans+Factory+Trofa'},
+ {id:'lisama', name:'Lisama', cat:'garment', town:'Vale do Ave (to confirm)', region:'Braga', country:'PT', lat:41.40, lng:-8.45, drive:605, unconf:true,
+  what:'Denim garment maker since 1981, about 70 workers; says Portugal suits mid-sized brands with something extra.',
+  why:'Worth a call on the same trip; confirm the address.',
+  web:'https://www.google.com/search?q=Lisama+Portugal+denim'},
+ {id:'alcanena', name:'Alcanena tannery district', cat:'leather', town:'Alcanena', region:'Santarém', country:'PT', lat:39.4583, lng:-8.6694, drive:500,
+  what:'Portugal’s leather cluster (Curtmar, Curtumes Vale Moinho and others).',
+  why:'Alternative to Igualada on the way to or from the Porto denim trip.'},
+ // ---------- FRANCE ----------
+ {id:'tuffery', name:'Atelier Tuffery', cat:'peer', town:'Florac', region:'Lozère', country:'FR', lat:44.3253, lng:3.5931, drive:530,
+  what:'France’s oldest jeans maker (1892); own atelier, selvedge and wool-blend denims, visits welcome.',
+  why:'A family atelier that survived by doing exactly what NORR does: heavy fabric, local materials, made-to-order.',
+  web:'https://www.ateliertuffery.com'},
+ {id:'1083', name:'1083', cat:'peer', town:'Romans-sur-Isère', region:'Drôme', country:'FR', lat:45.0444, lng:5.0514, drive:570,
+  what:'Jeans made within 1,083 km of the customer; built their own ateliers and a French weaving project.',
+  why:'Good model for transparent, radius-based sourcing.',
+  web:'https://www.1083.fr'},
+ {id:'velcorex', name:'Velcorex since 1828', cat:'mill', town:'Saint-Amarin', region:'Alsace', country:'FR', lat:47.8760, lng:7.0310, drive:780,
+  what:'Heritage Alsatian weaver (corduroy, denim, twills), exhibits at Denim Première Vision.',
+  why:'European alternative for cord or heavy twill jacket linings.',
+  web:'https://www.google.com/search?q=Velcorex+since+1828'},
+ {id:'nimes', name:'Nîmes — serge de Nîmes', cat:'rd', town:'Nîmes', region:'Gard', country:'FR', lat:43.8367, lng:4.3601, drive:470,
+  what:'Where "denim" gets its name; the Musée du Vieux Nîmes keeps the serge archive.',
+  why:'Brand-story stop on the way to Florac or Italy.'},
+ // ---------- ITALY / SWITZERLAND ----------
+ {id:'candiani', name:'Candiani Denim', cat:'mill', town:'Robecchetto con Induno', region:'Milan', country:'IT', lat:45.5333, lng:8.7667, drive:840,
+  what:'Europe’s largest denim mill (1938), selvedge on shuttle looms, organic and compostable denims, inside the Parco del Ticino reserve.',
+  why:'The European selvedge mill. If you ever move off Japanese fabric, this is the conversation.',
+  web:'https://www.candianidenim.com'},
+ {id:'berto', name:'Berto Industria Tessile', cat:'mill', town:'Bovolenta', region:'Padova', country:'IT', lat:45.2667, lng:11.9333, drive:960,
+  what:'Mill since 1887; selvedge woven on restored vintage shuttle looms, custom developments with full traceability.',
+  why:'Smaller and more artisanal than Candiani; happy to develop custom heavy selvedge.',
+  web:'https://www.berto.it'},
+ {id:'officina39', name:'Officina+39', cat:'finish', town:'Biella', region:'Piedmont', country:'IT', lat:45.5663, lng:8.0530, drive:780,
+  what:'Chemical finishing solutions for denim: laser- and ozone-compatible washes, low-impact dyes.',
+  why:'Only if you develop your own wash recipes.',
+  web:'https://www.officina39.com'},
+ {id:'riri', name:'Riri Group — Cobrax buttons & Riri zips', cat:'hardware', town:'Mendrisio', region:'Ticino', country:'CH', lat:45.8703, lng:8.9814, drive:810,
+  what:'Riri zips (Swiss, since 1936) and Cobrax, Italy’s best-known jeans button and rivet brand (1977), run from Mendrisio with Italian plants in Tirano and Padova.',
+  why:'Premium rivets and buttons in small quantities, custom-engraved. Same trip as Candiani (50 min apart).',
+  web:'https://www.riri.com'},
+ // ---------- NETHERLANDS ----------
+ {id:'denimcity', name:'Denim City — House of Denim', cat:'rd', town:'Amsterdam (De Hallen)', region:'Noord-Holland', country:'NL', lat:52.3668, lng:4.8684, drive:1140,
+  what:'The denim hub: jeans workshop, Blue Lab laundry (traditional plus laser/ozone), archive, Jean School, store.',
+  why:'Blue Lab is an open laundry — you can book development time on real machines without a factory minimum.',
+  web:'https://www.houseofdenim.org'},
+ {id:'kingpins', name:'Kingpins Amsterdam', cat:'rd', town:'Amsterdam (Westergas)', region:'Noord-Holland', country:'NL', lat:52.3860, lng:4.8770, drive:1140,
+  what:'The B2B denim fair, twice a year: Candiani, Isko, Japanese selvedge mills, trims makers, laundries — all in one hall.',
+  why:'One trip to meet every mill and hardware maker on this map at once. Fly from Alicante.',
+  web:'https://www.kingpinsshow.com'},
+ {id:'benzak', name:'Benzak Denim Developers', cat:'peer', town:'Amsterdam', region:'Noord-Holland', country:'NL', lat:52.3700, lng:4.9000, drive:1140,
+  what:'Small Amsterdam selvedge brand developing with Candiani and Japanese mills; sewn in Portugal and Japan.',
+  why:'A peer at NORR’s scale — useful to see how they split mill, laundry and sewing.',
+  web:'https://www.benzakdenim.com'},
+ // ---------- GERMANY / UK ----------
+ {id:'prym', name:'Prym Fashion', cat:'hardware', town:'Stolberg (Rhineland)', region:'NRW', country:'DE', lat:50.7667, lng:6.2333, drive:1080,
+  what:'Snap fasteners, rivets and jeans buttons; the company dates to 1530.',
+  why:'Alternative to Cobrax/YKK for brass snaps on the jacket.',
+  web:'https://www.prym-fashion.com'},
+ {id:'blackhorse', name:'Blackhorse Lane Ateliers', cat:'peer', town:'London E17', region:'London', country:'GB', lat:51.5897, lng:-0.0398, drive:1200,
+  what:'Selvedge jeans atelier in Walthamstow using Candiani and Japanese denim; public workshops and repairs.',
+  why:'Same craft, same customer. Their lifetime-repair model is worth copying.',
+  web:'https://blackhorselane.com'},
+ {id:'hiut', name:'Hiut Denim', cat:'peer', town:'Cardigan', region:'Wales', country:'GB', lat:52.0828, lng:-4.6612, drive:1320,
+  what:'Small-town jeans company that reopened a closed factory; selvedge and organic denims.',
+  why:'Proof a tiny town can run a jeans brand.',
+  web:'https://hiutdenim.co.uk'},
+ // ---------- TURKEY / TUNISIA (fly) ----------
+ {id:'isko', name:'ISKO', cat:'mill', town:'İnegöl (Bursa)', region:'Bursa', country:'TR', lat:40.0783, lng:29.5133, fly:true,
+  what:'One of the world’s largest denim mills; stretch specialist, also rigid and selvedge lines.', why:'Volume option if NORR ever scales.', web:'https://www.iskodenim.com'},
+ {id:'orta', name:'Orta Anadolu', cat:'mill', town:'Kayseri', region:'Kayseri', country:'TR', lat:38.7312, lng:35.4787, fly:true,
+  what:'Major Turkish denim mill, strong on sustainable and heritage-look fabrics.', why:'Meet them at Kingpins rather than flying to Kayseri.', web:'https://www.ortaanadolu.com'},
+ {id:'bossa', name:'Bossa', cat:'mill', town:'Adana', region:'Adana', country:'TR', lat:37.0000, lng:35.3213, fly:true,
+  what:'Turkish denim mill with traceability systems and rigid qualities.', why:'Kingpins regular.', web:'https://www.bossa.com.tr'},
+ {id:'calik', name:'Çalık Denim', cat:'mill', town:'Malatya', region:'Malatya', country:'TR', lat:38.3552, lng:38.3095, fly:true,
+  what:'Large vertical denim mill in Malatya.', why:'Kingpins regular.', web:'https://www.calikdenim.com'},
+ {id:'denimauthority', name:'Denim Authority', cat:'garment', town:'Ras Jebel', region:'Bizerte', country:'TN', lat:37.2150, lng:10.1200, fly:true,
+  what:'Vertical jeans manufacturer with its own laundry and finishing, an hour’s flight from Spain; makes for European premium brands.', why:'The nearest large-scale jeans factory outside Europe if a Spanish or Portuguese workshop can’t take the volume.', web:'https://www.google.com/search?q=Denim+Authority+Ras+Jebel'},
+];
+
+// Housing towns: approx asking €/m² from 2025 listings (rounded) — check the portal for live numbers
+const TOWNS = [
+ {id:'castalla', name:'Castalla', lat:38.5964, lng:-0.6714, pm2:850, near:'Home base', idealista:'castalla-alicante', fotocasa:'castalla'},
+ {id:'ibi', name:'Ibi', lat:38.6262, lng:-0.5724, pm2:950, near:'10 min from Castalla', idealista:'ibi-alicante', fotocasa:'ibi'},
+ {id:'onil', name:'Onil', lat:38.6281, lng:-0.6674, pm2:900, near:'5 min from Castalla', idealista:'onil-alicante', fotocasa:'onil'},
+ {id:'biar', name:'Biar', lat:38.6333, lng:-0.7667, pm2:750, near:'15 min; castle town', idealista:'biar-alicante', fotocasa:'biar'},
+ {id:'banyeres', name:'Banyeres de Mariola', lat:38.7167, lng:-0.6558, pm2:700, near:'Ferre & Recover', idealista:'banyeres-de-mariola-alicante', fotocasa:'banyeres-de-mariola'},
+ {id:'alcoy', name:'Alcoy / Alcoi', lat:38.6983, lng:-0.4736, pm2:950, near:'AITEX; old factory town', idealista:'alcoy-alcoi-alicante', fotocasa:'alcoy-alcoi'},
+ {id:'bocairent', name:'Bocairent', lat:38.7667, lng:-0.6083, pm2:600, near:'Between Banyeres and Ontinyent', idealista:'bocairent-valencia', fotocasa:'bocairent'},
+ {id:'ontinyent', name:'Ontinyent', lat:38.8222, lng:-0.6072, pm2:800, near:'ATEVAL textile cluster', idealista:'ontinyent-valencia', fotocasa:'ontinyent'},
+ {id:'villena', name:'Villena', lat:38.6350, lng:-0.8650, pm2:800, near:'20 min; AVE station', idealista:'villena-alicante', fotocasa:'villena'},
+ {id:'madrigueras', name:'Madrigueras', lat:39.2367, lng:-1.8086, pm2:550, near:'Capitán Denim', idealista:'madrigueras-albacete', fotocasa:'madrigueras'},
+ {id:'lorca', name:'Lorca', lat:37.6714, lng:-1.7017, pm2:1000, near:'Tanneries', idealista:'lorca-murcia', fotocasa:'lorca'},
+ {id:'picassent', name:'Picassent', lat:39.3633, lng:-0.4603, pm2:1500, near:'Tejidos Royo', idealista:'picassent-valencia', fotocasa:'picassent'},
+ {id:'igualada', name:'Igualada', lat:41.5789, lng:1.6172, pm2:1700, near:'Tanneries', idealista:'igualada-barcelona', fotocasa:'igualada'},
+ {id:'tortosa', name:'Tortosa', lat:40.8126, lng:0.5211, pm2:1000, near:'YKK', idealista:'tortosa-tarragona', fotocasa:'tortosa'},
+ {id:'cabezon', name:'Cabezón de la Sal', lat:43.3083, lng:-4.2333, pm2:1350, near:'Textil Santanderina', idealista:'cabezon-de-la-sal-cantabria', fotocasa:'cabezon-de-la-sal'},
+];
+
+const PRESETS = [
+ {k:'A', name:'Mariola loop', sub:'Yarn, lab and the textile cluster — half a day', stops:['ferre','recover','aitex','ateval']},
+ {k:'B', name:'Valencia denim day', sub:'Fabric in the morning, finishing after lunch', stops:['royo','jeanologia']},
+ {k:'C', name:'Lorca leather', sub:'Three tanneries, back for dinner', stops:['juanmartinez','martinezleal','jacobogomez']},
+ {k:'D', name:'La Mancha jeans + Valencia mill', sub:'Sewing factory, then the mill on the way home', stops:['capitan','royo']},
+ {k:'E', name:'Catalonia hardware & hide', sub:'Zips, weaver, two tanneries — one night in Igualada', stops:['ykk','ibq','badia','muntadas']},
+ {k:'F', name:'Portugal Vale do Ave', sub:'Mill, laundry, two factories — three days', stops:['troficolor','jeansfactory','ivn','vieirafaria']},
+ {k:'G', name:'North Italy selvedge', sub:'Candiani, Riri/Cobrax, Berto — four days', stops:['candiani','riri','berto']},
+ {k:'H', name:'Amsterdam & the Rhineland', sub:'Denim City, Kingpins week, Prym on the way back (or fly ALC–AMS)', stops:['denimcity','kingpins','prym']},
+];
+
+const CITIES = [['Alicante',38.345,-0.481],['Valencia',39.47,-0.376],['Murcia',37.984,-1.129],['Madrid',40.417,-3.703],['Albacete',38.995,-1.856],['Barcelona',41.387,2.169],['Zaragoza',41.656,-0.877],['Bilbao',43.263,-2.935],['Santander',43.462,-3.81],['Sevilla',37.389,-5.984],['Málaga',36.721,-4.421],['Lisboa',38.722,-9.139],['Porto',41.158,-8.629],['Toulouse',43.604,1.444],['Lyon',45.764,4.836],['Paris',48.857,2.352],['Milano',45.464,9.19],['Torino',45.07,7.687],['Venezia',45.44,12.316],['Zürich',47.377,8.541],['Amsterdam',52.368,4.9],['Bruxelles',50.85,4.352],['London',51.507,-0.128],['Frankfurt',50.11,8.682],['Marseille',43.296,5.37],['Tanger',35.76,-5.834],['Tunis',36.806,10.181],['Istanbul',41.008,28.978],['Ankara',39.933,32.86],['Alcoy',38.698,-0.474],['Elche',38.267,-0.698],
+ ['Salamanca',40.965,-5.664,1],['Valladolid',41.652,-4.724,1],['Burgos',42.344,-3.697,1],['Córdoba',37.888,-4.779,1],['Granada',37.177,-3.598,1],['Badajoz',38.879,-6.97,1],['Cáceres',39.476,-6.372,1],['Castellón',39.986,-0.051,1],['Tarragona',41.119,1.245,1],['Girona',41.979,2.821,1],['Teruel',40.345,-1.107,1],['Cuenca',40.071,-2.137,1],['Montpellier',43.611,3.877,1],['Perpignan',42.699,2.895,1],['Avignon',43.949,4.806,1],['Grenoble',45.188,5.724,1],['Dijon',47.322,5.041,1],['Reims',49.258,4.032,1],['Lille',50.629,3.057,1],['Genova',44.405,8.946,1],['Bologna',44.494,11.343,1],['Verona',45.438,10.993,1],['Luxembourg',49.612,6.13,1],['Köln',50.938,6.96,1],['Narbonne',43.184,3.004,1],['Coimbra',40.207,-8.429,1],['Vigo',42.24,-8.72,1],['Sevilla',37.389,-5.984,1],['Guarda',40.537,-7.267,1]];
+const COUNTRY_LBL = [['Spain',40.0,-3.6],['Portugal',39.6,-8.3],['France',46.9,2.4],['Italy',42.9,12.6],['Netherlands',52.4,5.5],['Germany',51.1,10.2],['United Kingdom',53.2,-1.9],['Switzerland',46.8,8.3],['Turkey',39.1,35.2],['Morocco',32.0,-6.2],['Tunisia',34.4,9.4],['Algeria',29.5,2.5],['Belgium',50.6,4.6],['Austria',47.5,14.2],['Ireland',53.3,-8.0]];
+
+
+/* ============================ HELPERS ============================ */
+const byId = {}; PLACES.forEach(p=>byId[p.id]=p); byId.home = HOME;
+const $ = s=>document.querySelector(s);
+const esc = s=>String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+function gcKm(a,b){const R=6371,dLat=(b.lat-a.lat)*Math.PI/180,dLng=(b.lng-a.lng)*Math.PI/180,la=a.lat*Math.PI/180,lb=b.lat*Math.PI/180;const h=Math.sin(dLat/2)**2+Math.cos(la)*Math.cos(lb)*Math.sin(dLng/2)**2;return 2*R*Math.asin(Math.sqrt(h));}
+function roadKm(a,b){return gcKm(a,b)*1.25;}
+function estMin(a,b){const km=roadKm(a,b);const v=km<30?50:km<120?72:95;return Math.round(km/v*60+8);}
+const LIVE={}; try{ Object.assign(LIVE, JSON.parse(localStorage.getItem('norr.live')||'{}')); }catch(e){}
+function lkey(a,b){ const f=p=>p.lat.toFixed(3)+','+p.lng.toFixed(3); return f(a)+'|'+f(b); }
+function liveRec(a,b){ return LIVE[lkey(a,b)]||LIVE[lkey(b,a)]||null; }
+function legMin(a,b){ if(a.id===b.id) return 0; const r=liveRec(a,b); if(r) return r.min; if(a.home&&b.drive) return b.drive; if(b.home&&a.drive) return a.drive; return estMin(a,b); }
+function roadKmLive(a,b){ const r=liveRec(a,b); return r?r.km:roadKm(a,b); }
+let liveQueue=Promise.resolve();
+function osrm(a,b){ // real road time + geometry from the public OSRM server, cached in this browser
+  const k=lkey(a,b); if(LIVE[k]) return Promise.resolve(LIVE[k]);
+  const run=()=>fetch('https://router.project-osrm.org/route/v1/driving/'+a.lng+','+a.lat+';'+b.lng+','+b.lat+'?overview=full&geometries=geojson').then(r=>r.json()).then(j=>{
+    const rt=j.routes&&j.routes[0]; if(!rt) throw new Error('no route');
+    let pts=rt.geometry.coordinates.map(c=>[c[1],c[0]]); const step=Math.max(1,Math.ceil(pts.length/400)); pts=pts.filter((p,i)=>i%step===0||i===pts.length-1);
+    const rec={min:Math.round(rt.duration/60*1.08), km:Math.round(rt.distance/1000), pts}; LIVE[k]=rec;
+    try{ localStorage.setItem('norr.live', JSON.stringify(LIVE)); }catch(e){}
+    return rec; });
+  const p=liveQueue.then(run, run); liveQueue=p.catch(()=>{}); return p;
+}
+function fmt(min){ if(min==null) return '—'; const h=Math.floor(min/60), m=Math.round(min%60); return h? (h+'h'+(m?String(m).padStart(2,'0'):'')) : (m+' min'); }
+function clock(min){ min=((min%1440)+1440)%1440; return String(Math.floor(min/60)).padStart(2,'0')+':'+String(min%60).padStart(2,'0'); }
+function driveFromHome(p){ return p.fly?null:legMin(HOME,p); }
+function kmFromHome(p){ return Math.round(roadKmLive(HOME,p)); }
+function bookingUrl(town,country){ return 'https://www.booking.com/searchresults.html?ss='+encodeURIComponent(town.replace(/\s*\(.*\)/,'')+', '+(COUNTRY[country]||'')); }
+function mapsDir(p){ return 'https://www.google.com/maps/dir/Castalla,+Alicante,+Spain/'+p.lat+','+p.lng; }
+function arcPts(a,b,n){ // curved line, slight bow
+  const pts=[]; const mx=(a.lng+b.lng)/2, my=(a.lat+b.lat)/2; const dx=b.lng-a.lng, dy=b.lat-a.lat; const d=Math.hypot(dx,dy)||1; const k=0.12;
+  const cx=mx-dy/d*d*k, cy=my+dx/d*d*k;
+  for(let i=0;i<=n;i++){const t=i/n;const lng=(1-t)*(1-t)*a.lng+2*(1-t)*t*cx+t*t*b.lng;const lat=(1-t)*(1-t)*a.lat+2*(1-t)*t*cy+t*t*b.lat;pts.push([lat,lng]);}
+  return pts;
+}
+// Minimal TopoJSON -> GeoJSON (fallback when the topojson lib is missing)
+function topoFeature(topo, obj){
+  const tf = topo.transform, sc = tf?tf.scale:[1,1], tr = tf?tf.translate:[0,0];
+  const arcs = topo.arcs.map(arc=>{let x=0,y=0;return arc.map(p=>{if(tf){x+=p[0];y+=p[1];return [x*sc[0]+tr[0],y*sc[1]+tr[1]];}return [p[0],p[1]];});});
+  const ring = idx=>{let out=[];idx.forEach(i=>{let a=i<0?arcs[~i].slice().reverse():arcs[i];if(out.length)a=a.slice(1);out=out.concat(a);});return out;};
+  const geom = g=>{ if(g.type==='Polygon') return {type:'Polygon',coordinates:g.arcs.map(ring)}; if(g.type==='MultiPolygon') return {type:'MultiPolygon',coordinates:g.arcs.map(poly=>poly.map(ring))}; return null; };
+  const geoms = obj.type==='GeometryCollection'?obj.geometries:[obj];
+  return {type:'FeatureCollection',features:geoms.map(g=>({type:'Feature',id:g.id,properties:g.properties||{},geometry:geom(g)})).filter(f=>f.geometry)};
+}
+function bboxOf(geo){let b=[180,90,-180,-90];const walk=c=>{if(typeof c[0]==='number'){if(c[0]<b[0])b[0]=c[0];if(c[1]<b[1])b[1]=c[1];if(c[0]>b[2])b[2]=c[0];if(c[1]>b[3])b[3]=c[1];}else c.forEach(walk);};walk(geo.coordinates);return b;}
+
+
+/* ============================ UI STATE ============================ */
+const HOUSE_SVG='<svg viewBox="0 0 24 24" width="12" height="12" fill="currentColor" aria-hidden="true"><path d="M12 3 2 11h3v9h5v-6h4v6h5v-9h3z"/></svg>';
+const BED_SVG='<svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor" aria-hidden="true"><path d="M3 6v13h2v-3h14v3h2v-8a4 4 0 0 0-4-4h-6v5H5V6H3zm8 4h6a2 2 0 0 1 2 2H11v-2zM6.5 8A1.5 1.5 0 1 1 8 9.5 1.5 1.5 0 0 1 6.5 8z"/></svg>';
+const HOME_SVG='<svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor" aria-hidden="true"><path d="M12 3 2 11h3v9h5v-6h4v6h5v-9h3z"/></svg>';
+const TABS=['explore','routes','houses','abroad'];
+const SHEET_W=400;
+let map, vectorLayer, labelLayer, placeLayer, houseLayer, listingLayer, spokeLayer, routeLayer;
+const markers={}; let selected=null, routeStops=[], activePreset=null, listings=[], db=true, hoverT=null; const LSKEY='norr.listings';
+const catOn={}; Object.keys(CATS).forEach(k=>catOn[k]=true); let housesOn=true, abroadOn=false;
+const isMobile=()=>window.innerWidth<860;
+const reduced=()=>window.matchMedia&&window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+const byTime=(a,b)=>(a.fly?1e9:driveFromHome(a))-(b.fly?1e9:driveFromHome(b));
+function reach(p){ if(p.fly) return {k:'fly',l:'Fly in'}; const t=driveFromHome(p); if(t<=150) return {k:'ok',l:'Day trip'}; if(t<=240) return {k:'warn',l:'Long day'}; return {k:'bad',l:'Overnight'}; }
+function townOf(p){ return (p.town||'').replace(/\s*\(.*\)/,''); }
+function note(msg){ const n=$('#note'); n.textContent=msg||''; n.hidden=!msg; }
+function fitPad(){ return isMobile()?{paddingTopLeft:[16,100],paddingBottomRight:[16,Math.round(window.innerHeight*0.5)+12]}:{paddingTopLeft:[16,76],paddingBottomRight:[SHEET_W+36,16]}; }
+function bindCards(root){ root.querySelectorAll('[data-id]').forEach(b=>b.onclick=()=>select(b.dataset.id)); }
+
+/* ============================ MAP ============================ */
+function pinHtml(p){ const c=CATS[p.cat]; const t=p.fly?'✈ fly':fmt(driveFromHome(p)); return '<div class="pin'+(c.sec?' sm':'')+(p.fly?' fly':'')+(p.unconf?' unconf':'')+(selected===p.id?' sel':'')+'" style="--dot:'+c.dot+'"><span class="pl">'+esc(t)+'</span><span class="nm">'+esc(p.name)+'</span></div>'; }
+function icon(html){ return L.divIcon({className:'pinwrap',html:html,iconSize:[0,0],iconAnchor:[0,0]}); }
+function setPin(p){ const m=markers[p.id]; if(m) m.setIcon(icon(pinHtml(p))); }
+function initMap(){
+  if(!window.L){ note('Map library did not load — lists and routes still work.'); $('#loading').hidden=true; return; }
+  map=L.map('map',{zoomControl:false,attributionControl:true,minZoom:3,maxZoom:18,zoomSnap:0.5,worldCopyJump:false});
+  map.attributionControl.setPrefix('');
+  L.control.zoom({position:'bottomleft'}).addTo(map);
+  map.setView([41.2,0.6], isMobile()?4:5);
+  vectorLayer=L.layerGroup();
+  const sat=L.layerGroup([
+    L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',{maxZoom:19,attribution:'Imagery \u00a9 Esri, Maxar, Earthstar Geographics'}),
+    L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}',{maxZoom:19,opacity:.9})
+  ]);
+  const streets=L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'\u00a9 OpenStreetMap contributors'});
+  const setMode=name=>{ const c=map.getContainer().classList; c.remove('mode-sat','mode-streets','mode-vector'); c.add(name==='Satellite'?'mode-sat':name==='Streets'?'mode-streets':'mode-vector'); try{ localStorage.setItem('norr.base',name); }catch(e){} };
+  L.control.layers({'Satellite':sat,'Streets':streets,'Indigo atlas':vectorLayer},null,{position:'bottomleft'}).addTo(map);
+  let base='Satellite'; try{ base=localStorage.getItem('norr.base')||base; }catch(e){}
+  ({Satellite:sat,Streets:streets,'Indigo atlas':vectorLayer}[base]||sat).addTo(map); setMode(base);
+  map.on('baselayerchange',e=>setMode(e.name));
+  const grat=[]; for(let lng=-30;lng<=50;lng+=5) grat.push([[20,lng],[70,lng]]); for(let lat=20;lat<=70;lat+=5) grat.push([[lat,-30],[lat,50]]);
+  L.polyline(grat,{className:'grat',interactive:false}).addTo(vectorLayer);
+  try{
+    const W=window.__WORLD_TOPO; if(W&&W.objects){ const key=Object.keys(W.objects)[0]; const fc=(window.topojson&&topojson.feature)?topojson.feature(W,W.objects[key]):topoFeature(W,W.objects[key]);
+      const feats=fc.features.filter(f=>{if(!f.geometry)return false;const b=bboxOf(f.geometry);return b[2]>-32&&b[0]<52&&b[3]>22&&b[1]<72;});
+      L.geoJSON({type:'FeatureCollection',features:feats},{interactive:false,style:f=>({className:'land'+((f.id==='ESP'||(f.properties&&f.properties.name==='Spain'))?' es':'')})}).addTo(vectorLayer);
+    } else note('Country outlines did not load; pins and routes still work.');
+    const E=window.__ESP_TOPO; if(E&&E.objects){ const key=Object.keys(E.objects)[0]; const fc=(window.topojson&&topojson.feature)?topojson.feature(E,E.objects[key]):topoFeature(E,E.objects[key]); L.geoJSON(fc,{interactive:false,style:()=>({className:'region'})}).addTo(vectorLayer); }
+  }catch(e){ note('Country outlines could not be drawn; pins and routes still work.'); }
+  $('#loading').hidden=true;
+  labelLayer=L.layerGroup().addTo(vectorLayer);
+  COUNTRY_LBL.forEach(c=>L.marker([c[1],c[2]],{icon:L.divIcon({className:'lbl country',html:esc(c[0]),iconSize:[0,0]}),interactive:false}).addTo(labelLayer));
+  CITIES.forEach(c=>L.marker([c[1],c[2]],{icon:L.divIcon({className:'lbl city'+(c[3]?' minor':''),html:esc(c[0]),iconSize:[0,0]}),interactive:false}).addTo(labelLayer));
+  spokeLayer=L.layerGroup().addTo(map); routeLayer=L.layerGroup().addTo(map); houseLayer=L.layerGroup().addTo(map); listingLayer=L.layerGroup().addTo(map); placeLayer=L.layerGroup().addTo(map);
+  const home=L.marker([HOME.lat,HOME.lng],{icon:icon('<div class="pin home"><span class="pl">NORR · Castalla</span></div>'),zIndexOffset:1200}).addTo(map);
+  home.on('mouseover',()=>showHover('<div class="band" style="--dot:var(--accent)"></div><div class="in"><div class="row"><span class="big">Base</span><span class="tag ok">Castalla</span></div><div class="sub">Every time on this map is measured from here. Ferre and Recover are 20 min up the road; Tejidos Royo is the nearest denim mill at 1h20.</div></div>',home.getLatLng()));
+  home.on('mouseout',hideHover); home.on('click',()=>{ map.flyTo([HOME.lat,HOME.lng],8); });
+  PLACES.forEach(p=>{
+    const base=CATS[p.cat].sec?0:400;
+    const m=L.marker([p.lat,p.lng],{icon:icon(pinHtml(p)),zIndexOffset:base,riseOnHover:false});
+    m.on('click',()=>select(p.id));
+    m.on('mouseover',()=>{ m.setZIndexOffset(2000); showHover(hoverPlace(p),m.getLatLng()); });
+    m.on('mouseout',()=>{ m.setZIndexOffset(selected===p.id?1000:base); hideHover(); });
+    markers[p.id]=m; m.addTo(placeLayer);
+  });
+  const zoomClass=()=>{const z=map.getZoom(); const c=map.getContainer().classList; c.toggle('z-low',z<4.5); c.toggle('z-high',z>=6.5);};
+  map.on('zoomend',zoomClass); zoomClass();
+  map.on('movestart',hideHover); map.on('zoomstart',hideHover);
+  buildHouseMarkers();
+}
+function showHover(html,ll){
+  clearTimeout(hoverT); const h=$('#hover'); h.innerHTML=html; h.classList.add('show');
+  const pt=map.latLngToContainerPoint(ll); const w=h.offsetWidth||240, hh=h.offsetHeight||100; const sz=map.getSize();
+  let x=Math.max(8,Math.min(sz.x-w-8,pt.x-w/2)); let y=pt.y-hh-42; if(y<8) y=pt.y+18;
+  h.style.transform='translate('+x+'px,'+y+'px)';
+}
+function hideHover(){ clearTimeout(hoverT); hoverT=setTimeout(()=>$('#hover').classList.remove('show'),90); }
+function hoverPlace(p){ const c=CATS[p.cat]; const r=reach(p); return '<div class="band" style="--dot:'+c.dot+'"></div><div class="in"><div class="row"><span class="big">'+(p.fly?'✈':fmt(driveFromHome(p)))+'</span><span class="tag '+r.k+'">'+r.l+'</span></div><div class="nm">'+esc(p.name)+'</div><div class="sub">'+esc(c.label)+' · '+esc(p.town)+'</div><div class="why">'+esc(p.why)+'</div></div>'; }
+function hoverHouse(t){ const l=listings.find(x=>x.townId===t.id&&x.photos&&x.photos.length); const m2=Math.round(100000/t.pm2);
+  return (l?'<div class="img" style="background-image:url('+esc(l.photos[0])+')"></div>':'<div class="band" style="--dot:var(--c-house)"></div>')
+  +'<div class="in"><div class="row"><span class="big">'+m2+' m²</span><span class="tag ok">for €100k</span></div><div class="nm">'+esc(t.name)+'</div><div class="sub">~€'+t.pm2.toLocaleString('en')+'/m² · '+esc(t.near)+'</div>'
+  +(l?'<div class="sub">Saved: '+esc(l.title)+(l.price?' · €'+Number(l.price).toLocaleString('en'):'')+'</div>':'<div class="sub">Tap for portal links</div>')+'</div>'; }
+function hoverListing(l){ return (l.photos&&l.photos.length?'<div class="img" style="background-image:url('+esc(l.photos[0])+')"></div>':'<div class="band" style="--dot:var(--c-listing)"></div>')+'<div class="in"><div class="row"><span class="big">'+(l.price?'€'+Number(l.price).toLocaleString('en'):'—')+'</span>'+(l.photos&&l.photos.length>1?'<span class="tag fly">'+l.photos.length+' photos</span>':'')+'</div><div class="nm">'+esc(l.title)+'</div><div class="sub">'+esc(l.townName||'')+(l.notes?' · '+esc(l.notes):'')+'</div></div>'; }
+function buildHouseMarkers(){
+  if(!map) return; houseLayer.clearLayers();
+  TOWNS.forEach(t=>{
+    const m=L.marker([t.lat+0.045,t.lng+0.045],{icon:icon('<div class="pin house"><span class="pl">'+HOUSE_SVG+'€'+t.pm2+'/m²</span></div>'),zIndexOffset:200});
+    m.on('mouseover',()=>{ m.setZIndexOffset(2000); showHover(hoverHouse(t),m.getLatLng()); });
+    m.on('mouseout',()=>{ m.setZIndexOffset(200); hideHover(); });
+    m.on('click',()=>{ hideHover(); closeDetail(); showTab('houses'); openSheet('half'); flashTown(t.id); });
+    m.addTo(houseLayer);
+  });
+}
+function flashTown(id){ const el=document.getElementById('town-'+id); if(!el) return; el.scrollIntoView({behavior:reduced()?'auto':'smooth',block:'center'}); el.classList.add('flash'); setTimeout(()=>el.classList.remove('flash'),1600); }
+function clearSpoke(){ if(spokeLayer) spokeLayer.clearLayers(); }
+function drawSpoke(p){ clearSpoke(); if(!map||p.fly) return; const r=liveRec(HOME,p); const pl=L.polyline(r?r.pts:arcPts(HOME,p,30),{className:'spoke',interactive:false}).addTo(spokeLayer); requestAnimationFrame(()=>animatePath(pl.getElement(),.7)); }
+function animatePath(el,sec){ if(!el||!el.getTotalLength||reduced()) return; try{ const len=el.getTotalLength(); const dash=el.style.strokeDasharray; el.style.transition='none'; el.style.strokeDasharray=len+' '+len; el.style.strokeDashoffset=len; el.getBoundingClientRect(); el.style.transition='stroke-dashoffset '+(sec||1.2)+'s cubic-bezier(.4,0,.2,1)'; el.style.strokeDashoffset='0'; setTimeout(()=>{ el.style.transition=''; el.style.strokeDasharray=dash||''; el.style.strokeDashoffset=''; },(sec||1.2)*1000+80); }catch(e){} }
+
+/* ============================ SELECT / DETAIL ============================ */
+function select(id,opts){
+  opts=opts||{}; const p=byId[id]; if(!p||p.home) return; hideHover();
+  const prev=selected; selected=id; if(prev&&byId[prev]&&!byId[prev].home) setPin(byId[prev]); setPin(p);
+  if(markers[id]) markers[id].setZIndexOffset(1000); if(prev&&markers[prev]) markers[prev].setZIndexOffset(CATS[byId[prev].cat].sec?0:400);
+  drawSpoke(p); renderDetail(p); openDetail(); renderExplore(); renderAbroad();
+  if(!p.fly&&!liveRec(HOME,p)) osrm(HOME,p).then(()=>{ if(selected===p.id){ drawSpoke(p); renderDetail(p); setPin(p); renderExplore(); renderAbroad(); renderPresets(); } }).catch(()=>{});
+  if(map&&opts.fit!==false){ const b=L.latLngBounds([HOME.lat,HOME.lng],[p.lat,p.lng]).pad(0.25); map.fitBounds(b,Object.assign({maxZoom:8},fitPad())); }
+  if(isMobile()) openSheet('half');
+}
+function openDetail(){ $('#detailView').classList.add('open'); $('#detailView').scrollTop=0; }
+function closeDetail(){ $('#detailView').classList.remove('open'); if(selected){ const p=byId[selected]; selected=null; setPin(p); if(markers[p.id]) markers[p.id].setZIndexOffset(CATS[p.cat].sec?0:400); clearSpoke(); renderExplore(); renderAbroad(); } }
+function renderDetail(p){
+  const c=CATS[p.cat]; const t=driveFromHome(p); const km=kmFromHome(p); const town=townOf(p);
+  let verdict='';
+  if(p.fly) verdict='<div class="verdict warn">Fly-in destination, about '+Math.round(gcKm(HOME,p))+' km as the crow flies. Alicante is your airport.</div>';
+  else if(t<=150) verdict='<div class="verdict">Day trip. '+fmt(t*2)+' of driving round trip — back for dinner even after a long visit.</div>';
+  else if(t<=240) verdict='<div class="verdict warn">Long day: '+fmt(t*2)+' round trip. Leave by 07:00, or add a second stop and sleep in '+esc(town)+'.</div>';
+  else verdict='<div class="verdict bad">Book a night. '+fmt(t)+' each way — plan it as a loop with the other stops nearby.</div>';
+  const near=p.fly?[]:PLACES.filter(x=>x.id!==p.id&&!x.fly&&estMin(p,x)<=75).sort((a,b)=>estMin(p,a)-estMin(p,b)).slice(0,4);
+  const housing=TOWNS.map(x=>({t:x,d:gcKm(x,p)})).filter(x=>x.d<18).sort((a,b)=>a.d-b.d)[0];
+  $('#detailView').innerHTML=
+   '<div class="hero" style="--dot:'+c.dot+'"><button class="back" id="backBtn">← Back</button><span class="time">'+(p.fly?'✈ fly-in':fmt(t)+' from Castalla')+'</span><div class="cat">'+esc(c.label)+' · '+esc(COUNTRY[p.country]||p.country)+'</div><h2>'+esc(p.name)+'</h2></div>'
+   +'<div class="dbody"><div class="where">'+esc(p.town)+', '+esc(p.region)+(p.unconf?' · <span class="unconf">site not confirmed, pin is approximate</span>':'')+'</div>'
+   +'<div class="tiles"><div class="tile"><b>'+(p.fly?'✈':fmt(t))+'</b><span>one way</span></div><div class="tile"><b>'+(p.fly?Math.round(gcKm(HOME,p)):km)+'</b><span>'+(p.fly?'km by air':(liveRec(HOME,p)?'km · live road':'km est.'))+'</span></div><div class="tile"><b>'+(p.fly?'—':fmt(t*2))+'</b><span>round trip</span></div></div>'
+   +verdict
+   +'<div class="chips">'+(p.fly?'':'<button class="chipbtn primary" id="addStop" type="button">+ Add to route</button>')
+   +(p.web?'<a class="chipbtn" href="'+esc(p.web)+'" target="_blank" rel="noopener">Website ↗</a>':'')
+   +'<a class="chipbtn" href="'+esc(mapsDir(p))+'" target="_blank" rel="noopener">Directions</a>'
+   +'<a class="chipbtn" href="'+esc(bookingUrl(town,p.country))+'" target="_blank" rel="noopener">Hotels in '+esc(town)+'</a>'
+   +(housing?'<button class="chipbtn" id="goHouse" type="button" data-town="'+housing.t.id+'">'+HOUSE_SVG+' Houses &lt;€100k in '+esc(housing.t.name)+'</button>':'')+'</div>'
+   +'<h3>What they do</h3><p>'+esc(p.what)+'</p><h3>For NORR</h3><p>'+esc(p.why)+'</p>'
+   +(near.length?'<h3>Also within 75 min of here</h3><div class="list">'+near.map(x=>cardHtml(x,{from:p})).join('')+'</div>':'')
+   +'</div>';
+  const d=$('#detailView');
+  d.querySelector('#backBtn').onclick=closeDetail;
+  const a=d.querySelector('#addStop'); if(a) a.onclick=()=>{ addStop(p.id); closeDetail(); showTab('routes'); };
+  const g=d.querySelector('#goHouse'); if(g) g.onclick=()=>{ closeDetail(); showTab('houses'); openSheet('half'); flashTown(g.dataset.town); };
+  bindCards(d);
+}
+
+/* ============================ EXPLORE ============================ */
+function cardHtml(p,o){ o=o||{}; const c=CATS[p.cat]; const r=reach(p); const t=o.from?estMin(o.from,p):driveFromHome(p);
+  return '<button class="card'+(c.sec?' sec':'')+(selected===p.id?' sel':'')+'" data-id="'+p.id+'" style="--dot:'+c.dot+'" type="button"><span class="tbadge">'+(p.fly?'✈':fmt(t))+'<small>'+(p.fly?Math.round(gcKm(HOME,p))+' km air':(o.from?'from here':'~'+kmFromHome(p)+' km'))+'</small></span><span class="cbody"><span class="nm">'+esc(p.name)+(p.unconf?'<span class="tag warn">unconfirmed</span>':'')+(o.from?'':'<span class="tag '+r.k+'">'+r.l+'</span>')+'</span><span class="sub">'+esc(c.label)+' · '+esc(p.town)+(p.country!=='ES'?', '+esc(COUNTRY[p.country]):'')+'</span><span class="why">'+esc(p.why)+'</span></span></button>'; }
+function renderPills(){
+  const cats=Object.keys(CATS);
+  $('#pills').innerHTML=cats.map(k=>'<button class="pill" data-cat="'+k+'" aria-pressed="'+catOn[k]+'" type="button"><i style="--dot:'+CATS[k].dot+'"></i>'+esc(CATS[k].label)+'</button>').join('')
+   +'<span class="pill sep"></span><button class="pill sw" id="pHouses" aria-pressed="'+housesOn+'" type="button">'+HOUSE_SVG+' Houses &lt;€100k</button><button class="pill sw" id="pAbroad" aria-pressed="'+abroadOn+'" type="button">Abroad in list</button>';
+  $('#pills').querySelectorAll('[data-cat]').forEach(b=>b.onclick=()=>{ catOn[b.dataset.cat]=!catOn[b.dataset.cat]; b.setAttribute('aria-pressed',catOn[b.dataset.cat]); applyFilters(); });
+  $('#pHouses').onclick=()=>{ housesOn=!housesOn; $('#pHouses').setAttribute('aria-pressed',housesOn); $('#houseLayer').checked=housesOn; applyHouseLayer(); };
+  $('#pAbroad').onclick=()=>{ abroadOn=!abroadOn; $('#pAbroad').setAttribute('aria-pressed',abroadOn); renderExplore(); };
+}
+function applyHouseLayer(){ if(!map) return; if(housesOn){ houseLayer.addTo(map); listingLayer.addTo(map); } else { map.removeLayer(houseLayer); map.removeLayer(listingLayer); } }
+function visible(p){ if(!catOn[p.cat]) return false; const q=$('#q').value.trim().toLowerCase(); if(q&&!(p.name+' '+p.town+' '+p.what+' '+p.region+' '+(COUNTRY[p.country]||'')).toLowerCase().includes(q)) return false; return true; }
+function applyFilters(){ PLACES.forEach(p=>{ const m=markers[p.id]; if(!m) return; const on=visible(p); if(on&&!placeLayer.hasLayer(m)) m.addTo(placeLayer); if(!on&&placeLayer.hasLayer(m)) placeLayer.removeLayer(m); }); renderExplore(); renderAbroad(); }
+function renderExplore(){
+  const q=$('#q').value.trim();
+  const list=PLACES.filter(p=>visible(p)&&(abroadOn||q||p.country==='ES')).sort(byTime);
+  const groups=[['Day trips','ok',p=>reach(p).k==='ok'],['Long days','warn',p=>reach(p).k==='warn'],['Overnight','bad',p=>reach(p).k==='bad'],['Fly in','fly',p=>p.fly]];
+  let html='';
+  groups.forEach(g=>{ const items=list.filter(g[2]); if(!items.length) return; html+='<div class="sh"><h3><span class="tag '+g[1]+'">'+g[0]+'</span></h3><span class="sub">'+items.length+' place'+(items.length>1?'s':'')+'</span></div><div class="list">'+items.map(p=>cardHtml(p)).join('')+'</div>'; });
+  $('#exploreList').innerHTML=html||'<div class="empty">Nothing matches. Switch a filter back on or clear the search.</div>';
+  bindCards($('#exploreList'));
+  const hlBox=$('#highlights'); hlBox.hidden=!!q;
+  if(!q){ const pick=cat=>PLACES.filter(p=>p.cat===cat&&!p.fly&&catOn[cat]).sort(byTime)[0];
+    const hl=[['Nearest mill',pick('mill')],['Nearest jeans factory',pick('garment')],['Nearest finishing',pick('finish')]].filter(x=>x[1]);
+    hlBox.innerHTML=hl.map(h=>'<button class="hlc" data-id="'+h[1].id+'" style="--dot:'+CATS[h[1].cat].dot+'" type="button"><span class="k">'+h[0]+'</span><span class="v">'+fmt(driveFromHome(h[1]))+'</span><span class="n">'+esc(h[1].name)+'</span></button>').join('');
+    bindCards(hlBox); }
+}
+function renderAbroad(){
+  const groups={}; PLACES.filter(p=>p.country!=='ES'&&visible(p)).forEach(p=>{(groups[p.country]=groups[p.country]||[]).push(p);});
+  const order=Object.keys(groups).sort((a,b)=>Math.min(...groups[a].map(p=>p.fly?1e9:driveFromHome(p)))-Math.min(...groups[b].map(p=>p.fly?1e9:driveFromHome(p))));
+  $('#abroad').innerHTML=order.length?order.map(cc=>{const g=groups[cc].sort(byTime); const n=g[0]; return '<div class="country-h"><b>'+esc(COUNTRY[cc])+'</b><span class="sub">'+g.length+' · '+(n.fly?'fly in':'from '+fmt(driveFromHome(n))+' by road')+'</span></div><div class="list">'+g.map(p=>cardHtml(p)).join('')+'</div>';}).join(''):'<div class="empty">No places abroad match the current filters.</div>';
+  bindCards($('#abroad'));
+}
+
+/* ============================ ROUTES ============================ */
+function settings(){ const [h,m]=($('#sStart').value||'08:00').split(':').map(Number); return {start:h*60+m, visit:Math.max(15,+$('#sVisit').value||90), maxDrive:Math.max(60,+$('#sMax').value||420), dayEnd:20*60+30}; }
+function waypoint(a,b,f){ // a point part-way along a long leg, named after the nearest city
+  const lat=a.lat+(b.lat-a.lat)*f, lng=a.lng+(b.lng-a.lng)*f; let best=null, bd=1e9;
+  CITIES.forEach(c=>{const d=gcKm({lat,lng},{lat:c[1],lng:c[2]}); if(d<bd){bd=d;best=c;}});
+  return {id:'wp', name:'Stopover near '+best[0], town:best[0], country:'', lat, lng, wp:true};
+}
+function plan(ids, o){
+  const stops=ids.map(i=>byId[i]).filter(p=>p&&!p.fly); const days=[]; let n=1; let day={n, items:[], drive:0, t:o.start}; let cur=HOME;
+  const endDay=where=>{ day.overnight=where; days.push(day); n++; day={n, items:[], drive:0, t:o.start}; };
+  const travel=(to, needVisit)=>{ // drive cur -> to, splitting across days and stopovers when it is too long
+    const total=legMin(cur,to); let remaining=total, from=cur, done=0, guard=0;
+    while(remaining>0 && guard++<40){
+      let chunk=Math.min(remaining, o.maxDrive-day.drive, o.dayEnd-day.t-(needVisit?o.visit:0));
+      if(chunk<=0 || (chunk<180 && chunk<remaining)){ if(day.items.length){ endDay(from); continue; } chunk=Math.min(remaining,o.maxDrive); }
+      if(chunk>=remaining){ day.items.push({type:'leg', from, to, min:remaining, at:day.t}); day.t+=remaining; day.drive+=remaining; remaining=0; break; }
+      done+=chunk; const wp=waypoint(cur,to,done/total);
+      day.items.push({type:'leg', from, to:wp, min:chunk, at:day.t}); day.t+=chunk; day.drive+=chunk; remaining-=chunk; from=wp; endDay(wp);
+    }
+  };
+  for(const s of stops){ travel(s,true); day.items.push({type:'visit', at:day.t, place:s, min:o.visit}); day.t+=o.visit; cur=s; }
+  travel(HOME,false); day.home=true; days.push(day);
+  return days;
+}
+function summary(ids){ const o=settings(); const days=plan(ids,o); const drive=days.reduce((a,d)=>a+d.drive,0); const nights=days.filter(d=>d.overnight).length; return {days:days.length, drive, nights, km:Math.round(days.reduce((a,d)=>a+d.items.filter(i=>i.type==='leg').reduce((x,i)=>x+roadKmLive(i.from,i.to),0),0))}; }
+
+function renderPresets(){
+  $('#presetrow').innerHTML=PRESETS.map(p=>{const s=summary(p.stops); return '<button class="pcard'+(activePreset===p.k?' sel':'')+'" data-k="'+p.k+'" type="button"><span class="ltr">'+p.k+'</span><span class="nm">'+esc(p.name)+'</span><span class="sub">'+esc(p.sub)+'</span><span class="meta"><span><b>'+fmt(s.drive)+'</b> drive</span><span>'+(s.nights?'<b>'+s.nights+'</b> night'+(s.nights>1?'s':''):'no hotel')+'</span></span></button>';}).join('');
+  $('#presetrow').querySelectorAll('.pcard').forEach(b=>b.onclick=()=>{ activePreset=b.dataset.k; routeStops=PRESETS.find(x=>x.k===activePreset).stops.slice(); renderRoute(); b.scrollIntoView({behavior:reduced()?'auto':'smooth',inline:'start',block:'nearest'}); });
+}
+function addStop(id){ if(!routeStops.includes(id)) routeStops.push(id); activePreset=null; renderRoute(); }
+function dayHtml(d){
+  return '<div class="day"><h4>Day '+d.n+'<span>'+fmt(d.drive)+' driving</span></h4>'+d.items.map(it=>{
+    if(it.type==='leg') return '<div class="step leg"><span class="tm">'+clock(it.at)+'</span><span class="mk"></span><span class="what">Drive '+fmt(it.min)+' → '+esc(townOf(it.to))+' ('+(liveRec(it.from,it.to)?Math.round(roadKmLive(it.from,it.to))+' km <span class="live">live</span>':'~'+Math.round(roadKm(it.from,it.to))+' km')+')</span></div>';
+    if(it.type==='visit') return '<div class="step visit"><span class="tm">'+clock(it.at)+'</span><span class="mk"></span><span><b>'+esc(it.place.name)+'</b> · '+fmt(it.min)+' visit</span></div>';
+    return '';
+  }).join('')
+  +(d.overnight?'<div class="step hotel"><span class="tm">'+clock(d.t)+'</span><span class="mk"></span><span><b>Sleep in '+esc(townOf(d.overnight))+'</b> — <a href="'+esc(bookingUrl(d.overnight.town,d.overnight.country||'ES'))+'" target="_blank" rel="noopener">Booking.com</a> · <a href="https://www.google.com/travel/hotels/'+encodeURIComponent(townOf(d.overnight))+'" target="_blank" rel="noopener">Google Hotels</a></span></div>':'')
+  +(d.home?'<div class="step visit"><span class="tm">'+clock(d.t)+'</span><span class="mk"></span><span><b>Home in Castalla</b></span></div>':'')+'</div>';
+}
+function renderRoute(){
+  renderPresets(); if(routeLayer) routeLayer.clearLayers();
+  const box=$('#routeBox');
+  if(!routeStops.length){ box.innerHTML='<div class="empty">Pick a loop above, or open any place and press <b>Add to route</b>.</div>'; return; }
+  const o=settings(); const days=plan(routeStops,o); const s=summary(routeStops); const nights=days.filter(d=>d.overnight);
+  box.innerHTML='<div class="tiles four"><div class="tile"><b>'+fmt(s.drive)+'</b><span>driving</span></div><div class="tile"><b>'+s.km+'</b><span>km</span></div><div class="tile"><b>'+routeStops.length+'</b><span>stop'+(routeStops.length>1?'s':'')+'</span></div><div class="tile'+(s.nights?' warn':'')+'"><b>'+s.nights+'</b><span>night'+(s.nights===1?'':'s')+'</span></div></div>'
+   +(s.nights?'<div class="banner">'+BED_SVG+'<div><b>Book '+s.nights+' night'+(s.nights>1?'s':'')+':</b> '+nights.map(d=>'<a href="'+esc(bookingUrl(d.overnight.town,d.overnight.country||'ES'))+'" target="_blank" rel="noopener">'+esc(townOf(d.overnight))+'</a>').join(', ')+'</div></div>'
+            :'<div class="banner ok">'+HOME_SVG+'<div><b>No hotel needed.</b> Back in Castalla around '+clock(days[0].t)+'.</div></div>')
+   +'<div class="sh"><h3>Stops in order</h3><button class="link" id="clearStops" type="button">Clear</button></div><div class="stoplist">'
+   +routeStops.map((id,i)=>'<div class="stopi"><span class="n">'+(i+1)+'</span><span style="min-width:0"><b>'+esc(byId[id].name)+'</b><span class="sub">'+esc(townOf(byId[id]))+' · '+fmt(driveFromHome(byId[id]))+' from base</span></span><span class="ctl"><button data-up="'+i+'" aria-label="Move up" type="button">↑</button><button data-down="'+i+'" aria-label="Move down" type="button">↓</button><button data-rm="'+i+'" aria-label="Remove" type="button">×</button></span></div>').join('')+'</div>'
+   +'<div class="sh"><h3>Itinerary</h3><span class="sub">'+days.length+' day'+(days.length>1?'s':'')+'</span></div><div class="itin">'+days.map(dayHtml).join('')+'</div>';
+  box.querySelector('#clearStops').onclick=()=>{ routeStops=[]; activePreset=null; renderRoute(); };
+  box.querySelectorAll('[data-up]').forEach(b=>b.onclick=()=>{ const i=+b.dataset.up; if(i>0){ [routeStops[i-1],routeStops[i]]=[routeStops[i],routeStops[i-1]]; activePreset=null; renderRoute(); } });
+  box.querySelectorAll('[data-down]').forEach(b=>b.onclick=()=>{ const i=+b.dataset.down; if(i<routeStops.length-1){ [routeStops[i+1],routeStops[i]]=[routeStops[i],routeStops[i+1]]; activePreset=null; renderRoute(); } });
+  box.querySelectorAll('[data-rm]').forEach(b=>b.onclick=()=>{ routeStops.splice(+b.dataset.rm,1); activePreset=null; renderRoute(); });
+  drawRoute(days);
+}
+function drawRoute(days){
+  if(!map) return;
+  const seq=[HOME]; routeStops.forEach(id=>{ if(!byId[id].fly) seq.push(byId[id]); }); seq.push(HOME);
+  const pts=[], missing=[]; for(let i=0;i<seq.length-1;i++){ const r=liveRec(seq[i],seq[i+1]); if(!r) missing.push([seq[i],seq[i+1]]); pts.push(...(r?r.pts:arcPts(seq[i],seq[i+1],30))); }
+  if(missing.length){ const sig=routeStops.join(','); Promise.all(missing.map(m=>osrm(m[0],m[1]).catch(()=>null))).then(()=>{ if(routeStops.join(',')===sig&&routeStops.length) renderRoute(); }); }
+  L.polyline(pts,{className:'routeline halo',interactive:false}).addTo(routeLayer);
+  const line=L.polyline(pts,{className:'routeline',interactive:false}).addTo(routeLayer);
+  seq.slice(1,-1).forEach((p,i)=>L.marker([p.lat,p.lng],{icon:icon('<div class="pin num" style="animation-delay:'+(0.2+i*0.12)+'s">'+(i+1)+'</div>'),interactive:false,zIndexOffset:900}).addTo(routeLayer));
+  days.filter(d=>d.overnight).forEach(d=>L.marker([d.overnight.lat,d.overnight.lng],{icon:icon('<div class="pin bed" title="Overnight">'+BED_SVG+'</div>'),interactive:false,zIndexOffset:950}).addTo(routeLayer));
+  map.fitBounds(L.latLngBounds(seq.map(p=>[p.lat,p.lng])).pad(0.15),Object.assign({animate:false,maxZoom:8},fitPad()));
+  requestAnimationFrame(()=>animatePath(line.getElement(),1.4));
+}
+
+/* ============================ HOUSES ============================ */
+function renderTowns(){
+  const max=Math.max(...TOWNS.map(t=>100000/t.pm2)); const sorted=TOWNS.slice().sort((a,b)=>a.pm2-b.pm2);
+  $('#towns').innerHTML=sorted.map(t=>{const m2=Math.round(100000/t.pm2); const q=encodeURIComponent('casa en venta '+t.name+' menos de 100.000 euros');
+   return '<div class="buyrow" id="town-'+t.id+'" data-town="'+t.id+'" role="button" tabindex="0"><div><div class="nm">'+esc(t.name)+'</div><div class="sub">'+esc(t.near)+' · ~€'+t.pm2.toLocaleString('en')+'/m²</div></div><div class="m2">'+m2+'<small>m²</small></div><div class="bar"><i style="--w:'+Math.round(m2/max*100)+'%"></i></div>'
+   +'<div class="links"><a target="_blank" rel="noopener" href="https://www.idealista.com/venta-viviendas/'+t.idealista+'/con-precio-hasta_100000/">idealista &lt;100k</a><a target="_blank" rel="noopener" href="https://www.fotocasa.es/es/comprar/viviendas/'+t.fotocasa+'/todas-las-zonas/l?maxPrice=100000">fotocasa</a><a target="_blank" rel="noopener" href="https://www.google.com/search?q='+q+'">Google</a></div></div>';}).join('');
+  $('#towns').querySelectorAll('.buyrow').forEach(el=>{ const go=e=>{ if(e.target.closest('a')) return; const t=TOWNS.find(x=>x.id===el.dataset.town); if(t&&map){ map.flyTo([t.lat,t.lng],9,{animate:!reduced()}); if(isMobile()) openSheet('peek'); } }; el.onclick=go; el.onkeydown=e=>{ if(e.key==='Enter'||e.key===' '){ e.preventDefault(); go(e);} }; });
+  $('#lTown').innerHTML=TOWNS.map(t=>'<option value="'+t.id+'">'+esc(t.name)+'</option>').join('');
+}
+function renderListings(){
+  if(listingLayer) listingLayer.clearLayers();
+  const box=$('#listings');
+  if(!listings.length){ box.innerHTML='<div class="empty" style="grid-column:1/-1">'+(db?'No saved listings yet. Save one and it shows up here and as a photo pin on the map.':'Sign in as the atlas owner to save listings across devices.')+'</div>'; return; }
+  box.innerHTML=listings.map(l=>'<div class="lcard" data-lid="'+esc(l.id)+'"><div class="ph"'+(l.photos&&l.photos.length?' style="background-image:url('+esc(l.photos[0])+')"':'')+'>'+(l.photos&&l.photos.length?'':'no photo')+'</div>'+(l.price?'<span class="pr">€'+Number(l.price).toLocaleString('en')+'</span>':'')+'<div class="in"><div class="nm">'+esc(l.title)+'</div><div class="sub">'+esc(l.townName||'')+'</div><div class="row">'+(l.url?'<a href="'+esc(l.url)+'" target="_blank" rel="noopener" style="font-size:11.5px">Open ↗</a>':'<span></span>')+'<button class="del" data-del="'+esc(l.id)+'" type="button">Delete</button></div></div></div>').join('');
+  box.querySelectorAll('[data-del]').forEach(b=>b.onclick=e=>{ e.stopPropagation(); listings=listings.filter(x=>x.id!==b.dataset.del); persist(); renderListings(); });
+  box.querySelectorAll('.lcard').forEach(el=>el.onclick=e=>{ if(e.target.closest('button,a')) return; const l=listings.find(x=>x.id===el.dataset.lid); if(l&&l.lat&&map){ map.flyTo([l.lat,l.lng],9,{animate:!reduced()}); if(isMobile()) openSheet('peek'); } });
+  if(map){ listings.forEach(l=>{ if(!l.lat) return; const html=l.photos&&l.photos.length?'<div class="pin photo"><img src="'+esc(l.photos[0])+'" alt=""></div>':'<div class="pin house" style="border-color:var(--c-listing)"><span class="pl">'+(l.price?'€'+Math.round(l.price/1000)+'k':'saved')+'</span></div>';
+    const m=L.marker([l.lat,l.lng],{icon:icon(html),zIndexOffset:800}); m.on('mouseover',()=>{ m.setZIndexOffset(2000); showHover(hoverListing(l),m.getLatLng()); }); m.on('mouseout',()=>{ m.setZIndexOffset(800); hideHover(); });
+    m.on('click',()=>{ hideHover(); closeDetail(); showTab('houses'); openSheet('half'); const el=document.querySelector('.lcard[data-lid="'+l.id+'"]'); if(el){ el.scrollIntoView({behavior:reduced()?'auto':'smooth',block:'center'}); el.style.borderColor='var(--accent)'; setTimeout(()=>el.style.borderColor='',1600);} });
+    m.addTo(listingLayer); }); }
+}
+function loadListings(){ try{ listings=JSON.parse(localStorage.getItem(LSKEY)||'[]'); if(!Array.isArray(listings)) listings=[]; }catch(e){ listings=[]; } }
+function persist(){ try{ localStorage.setItem(LSKEY, JSON.stringify(listings)); return true; }catch(e){ $('#saveStatus').textContent='This browser\u2019s storage is full \u2014 delete a listing or add fewer photos.'; return false; } }
+function initCaps(){ loadListings(); renderListings(); }
+function shrink(file){ // resize photos to ~900px JPEG so a listing stays small in browser storage
+  return new Promise(res=>{ const img=new Image(); const u=URL.createObjectURL(file);
+    img.onload=()=>{ const max=900; const sc=Math.min(1,max/Math.max(img.width,img.height)); const w=Math.round(img.width*sc), h=Math.round(img.height*sc); const c=document.createElement('canvas'); c.width=w; c.height=h; c.getContext('2d').drawImage(img,0,0,w,h); URL.revokeObjectURL(u); try{ res(c.toDataURL('image/jpeg',0.72)); }catch(e){ res(null); } };
+    img.onerror=()=>{ URL.revokeObjectURL(u); res(null); }; img.src=u; });
+}
+async function saveListing(e){
+  e.preventDefault();
+  const t=TOWNS.find(x=>x.id===$('#lTown').value)||TOWNS[0]; const st=$('#saveStatus'); const btn=$('#saveBtn'); btn.disabled=true;
+  const files=Array.from($('#lPhotos').files||[]); const photos=[];
+  st.textContent=files.length?'Preparing photos\u2026':'Saving\u2026';
+  for(const f of files){ const d=await shrink(f); if(d) photos.push(d); }
+  const jitter=()=>(Math.random()-0.5)*0.05;
+  listings.unshift({ id:'l'+Date.now(), title:$('#lTitle').value.trim(), townId:t.id, townName:t.name, price:+$('#lPrice').value||null, url:$('#lUrl').value.trim(), notes:$('#lNotes').value.trim(), photos, lat:t.lat+jitter(), lng:t.lng+jitter(), created:new Date().toISOString() });
+  if(persist()){ st.textContent='Saved.'; $('#addForm').reset(); $('#addForm').hidden=true; renderListings(); } else { listings.shift(); }
+  btn.disabled=false;
+}
+function exportListings(){ const blob=new Blob([JSON.stringify(listings,null,1)],{type:'application/json'}); const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='norr-listings.json'; document.body.appendChild(a); a.click(); setTimeout(()=>{URL.revokeObjectURL(a.href); a.remove();},500); }
+function importListings(file){ const r=new FileReader(); r.onload=()=>{ try{ const arr=JSON.parse(r.result); if(!Array.isArray(arr)) throw 0; const ids=new Set(listings.map(l=>l.id)); let n=0; arr.forEach(l=>{ if(l&&l.id&&!ids.has(l.id)){ listings.push(l); n++; } }); if(persist()){ renderListings(); $('#saveStatus').textContent='Imported '+n+' listing'+(n===1?'':'s')+'.'; } }catch(e){ $('#saveStatus').textContent='That file is not a listings export.'; } }; r.readAsText(file); }
+
+/* ============================ SHEET / TABS / BOOT ============================ */
+let sheetState='half';
+function sheetPx(state){ const H=window.innerHeight; return state==='peek'?156:state==='full'?Math.round(H*0.9):Math.round(H*0.5); }
+function openSheet(state){ if(!isMobile()) return; sheetState=state; document.documentElement.style.setProperty('--sheet-h',sheetPx(state)+'px'); $('#sheet').dataset.state=state; }
+(function sheetDrag(){
+  const h=$('#handle'), sheet=$('#sheet'); let startY=0,startH=0,moved=false;
+  h.addEventListener('pointerdown',e=>{ startY=e.clientY; startH=sheet.getBoundingClientRect().height; moved=false; sheet.classList.add('dragging'); h.setPointerCapture(e.pointerId); });
+  h.addEventListener('pointermove',e=>{ if(!sheet.classList.contains('dragging')) return; const dy=startY-e.clientY; if(Math.abs(dy)>4) moved=true; const px=Math.max(120,Math.min(window.innerHeight*0.92,startH+dy)); document.documentElement.style.setProperty('--sheet-h',px+'px'); });
+  const end=e=>{ if(!sheet.classList.contains('dragging')) return; sheet.classList.remove('dragging'); const cur=sheet.getBoundingClientRect().height;
+    if(!moved){ openSheet(sheetState==='peek'?'half':sheetState==='half'?'full':'peek'); return; }
+    const snaps=['peek','half','full'].map(s=>[s,Math.abs(sheetPx(s)-cur)]).sort((a,b)=>a[1]-b[1]); openSheet(snaps[0][0]); };
+  h.addEventListener('pointerup',end); h.addEventListener('pointercancel',end);
+})();
+function showTab(name){
+  document.querySelectorAll('.tabs button').forEach(b=>b.setAttribute('aria-selected',b.dataset.tab===name));
+  TABS.forEach(n=>{ $('#sec-'+n).hidden=n!==name; });
+  $('#scroll').scrollTop=0;
+  if(location.hash!=='#'+name){ try{ history.replaceState(null,'','#'+name);}catch(e){} }
+}
+document.querySelectorAll('.tabs button').forEach(b=>b.onclick=()=>{ closeDetail(); showTab(b.dataset.tab); if(isMobile()&&sheetState==='peek') openSheet('half'); });
+window.addEventListener('hashchange',()=>{const n=location.hash.slice(1); if(TABS.includes(n)) showTab(n);});
+$('#q').addEventListener('input',()=>{ applyFilters(); if($('#q').value.trim()){ closeDetail(); showTab('explore'); if(isMobile()) openSheet('half'); } });
+$('#homeBtn').onclick=()=>{ if(map){ closeDetail(); map.flyTo([41.2,0.6],isMobile()?4:5,{animate:!reduced()}); } };
+['#sStart','#sVisit','#sMax'].forEach(s=>$(s).addEventListener('change',renderRoute));
+$('#houseLayer').addEventListener('change',e=>{ housesOn=e.target.checked; $('#pHouses').setAttribute('aria-pressed',housesOn); applyHouseLayer(); });
+$('#toggleAdd').onclick=()=>{ const f=$('#addForm'); f.hidden=!f.hidden; if(!f.hidden) $('#lTitle').focus(); };
+$('#cancelAdd').onclick=()=>{ $('#addForm').hidden=true; };
+$('#addForm').addEventListener('submit',saveListing);
+$('#exportBtn').onclick=exportListings;
+$('#importFile').addEventListener('change',e=>{ if(e.target.files[0]) importListings(e.target.files[0]); e.target.value=''; });
+window.addEventListener('resize',()=>{ if(map) map.invalidateSize(); if(isMobile()) openSheet(sheetState); });
+
+renderPills(); initMap(); renderExplore(); renderAbroad(); renderRoute(); renderTowns(); initCaps();
+if(isMobile()) openSheet('half');
+const h0=location.hash.slice(1); if(TABS.includes(h0)) showTab(h0);
+})();
+</script>
+<script>
+// Android wrapper hooks: open outside links in the phone's browser; let the back button close the detail panel first.
+document.addEventListener('click',function(e){ var l=e.target.closest&&e.target.closest('a[href^="http"]'); if(l){ e.preventDefault(); window.location.href=l.href; } },true);
+window.__back=function(){ var d=document.getElementById('detailView'); if(d&&d.classList.contains('open')){ var b=document.getElementById('backBtn'); if(b) b.click(); return true; } return false; };
+</script>
+</body>
+</html>

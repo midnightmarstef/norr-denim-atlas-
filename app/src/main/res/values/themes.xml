@@ -1,0 +1,8 @@
+<resources>
+    <style name="Theme.NorrAtlas" parent="android:Theme.Material.NoActionBar">
+        <item name="android:statusBarColor">@color/indigo</item>
+        <item name="android:navigationBarColor">@color/indigo</item>
+        <item name="android:windowBackground">@color/indigo</item>
+        <item name="android:windowLightStatusBar">false</item>
+    </style>
+</resources>
