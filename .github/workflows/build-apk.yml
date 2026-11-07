@@ -12,27 +12,60 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+
+      - name: Unlock the NORR signing key
+        id: key
+        env:
+          NORR_SIGNING_PASSPHRASE: ${{ secrets.NORR_SIGNING_PASSPHRASE }}
+        run: |
+          if [ -z "$NORR_SIGNING_PASSPHRASE" ]; then
+            echo "::warning::No NORR_SIGNING_PASSPHRASE secret yet. Add it under Settings > Secrets and variables > Actions, then run this workflow again. Skipping the build so the current APK stays in place."
+            echo "ready=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          openssl enc -d -aes-256-cbc -pbkdf2 -iter 200000 -in signing/norr-release.p12.enc -out "$RUNNER_TEMP/norr.p12" -pass env:NORR_SIGNING_PASSPHRASE
+          echo "NORR_KEYSTORE=$RUNNER_TEMP/norr.p12" >> "$GITHUB_ENV"
+          echo "ready=true" >> "$GITHUB_OUTPUT"
+
       - uses: actions/setup-java@v4
+        if: steps.key.outputs.ready == 'true'
         with:
           distribution: temurin
           java-version: "17"
       - uses: android-actions/setup-android@v3
+        if: steps.key.outputs.ready == 'true'
         with:
           packages: "platform-tools platforms;android-35 build-tools;35.0.0"
       - uses: gradle/actions/setup-gradle@v4
+        if: steps.key.outputs.ready == 'true'
         with:
           gradle-version: "8.9"
-      - name: Build debug APK
-        run: gradle assembleDebug --no-daemon
-      - name: Rename
-        run: cp app/build/outputs/apk/debug/app-debug.apk norr-atlas.apk
+
+      - name: Build signed APK
+        if: steps.key.outputs.ready == 'true'
+        env:
+          NORR_SIGNING_PASSPHRASE: ${{ secrets.NORR_SIGNING_PASSPHRASE }}
+        run: |
+          gradle assembleRelease --no-daemon
+          cp app/build/outputs/apk/release/app-release.apk norr-atlas.apk
+          VC=$((100 + GITHUB_RUN_NUMBER))
+          printf '{"versionCode": %d, "versionName": "1.%d", "apk": "https://github.com/%s/releases/latest/download/norr-atlas.apk"}\n' "$VC" "$GITHUB_RUN_NUMBER" "$GITHUB_REPOSITORY" > version.json
+          cat version.json
+
       - uses: actions/upload-artifact@v4
+        if: steps.key.outputs.ready == 'true'
         with:
           name: norr-atlas-apk
-          path: norr-atlas.apk
+          path: |
+            norr-atlas.apk
+            version.json
+
       - name: Publish as the latest release
+        if: steps.key.outputs.ready == 'true'
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           gh release delete latest --yes --cleanup-tag || true
-          gh release create latest norr-atlas.apk --title "NORR Atlas APK (latest)" --notes "Built from commit ${GITHUB_SHA::7}. Download norr-atlas.apk on your Android phone and open it to install."
+          gh release create latest norr-atlas.apk version.json \
+            --title "NORR Atlas 1.${GITHUB_RUN_NUMBER}" \
+            --notes "Built from commit ${GITHUB_SHA::7}. Open norr-atlas.apk on your Android phone to install or update."
