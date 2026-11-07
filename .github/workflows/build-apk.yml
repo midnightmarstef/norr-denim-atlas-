@@ -7,13 +7,22 @@ on:
 permissions:
   contents: write
 
+concurrency:
+  group: build-apk
+  cancel-in-progress: false
+
 jobs:
   build:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
 
-      - name: Unlock the NORR signing key
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Unlock (or create) the NORR signing key
         id: key
         env:
           NORR_SIGNING_PASSPHRASE: ${{ secrets.NORR_SIGNING_PASSPHRASE }}
@@ -23,15 +32,27 @@ jobs:
             echo "ready=false" >> "$GITHUB_OUTPUT"
             exit 0
           fi
-          openssl enc -d -aes-256-cbc -pbkdf2 -iter 200000 -in signing/norr-release.p12.enc -out "$RUNNER_TEMP/norr.p12" -pass env:NORR_SIGNING_PASSPHRASE
-          echo "NORR_KEYSTORE=$RUNNER_TEMP/norr.p12" >> "$GITHUB_ENV"
+          KS="$RUNNER_TEMP/norr.p12"
+          if [ -f signing/norr-release.p12.enc ]; then
+            if ! openssl enc -d -aes-256-cbc -pbkdf2 -iter 200000 -in signing/norr-release.p12.enc -out "$KS" -pass env:NORR_SIGNING_PASSPHRASE; then
+              echo "::error::NORR_SIGNING_PASSPHRASE does not unlock signing/norr-release.p12.enc. Put the original passphrase back in the secret."
+              exit 1
+            fi
+          else
+            # First run: make the app's permanent key here, lock it with the secret, and store only the locked copy.
+            keytool -genkeypair -storetype PKCS12 -keystore "$KS" -alias norr -keyalg RSA -keysize 3072 -validity 10000 \
+              -storepass:env NORR_SIGNING_PASSPHRASE -keypass:env NORR_SIGNING_PASSPHRASE -dname "CN=NORR Atlas, O=NORR, C=IS"
+            mkdir -p signing
+            openssl enc -aes-256-cbc -pbkdf2 -iter 200000 -salt -in "$KS" -out signing/norr-release.p12.enc -pass env:NORR_SIGNING_PASSPHRASE
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git add signing/norr-release.p12.enc
+            git commit -m "Store the encrypted NORR signing key"
+            git push
+          fi
+          echo "NORR_KEYSTORE=$KS" >> "$GITHUB_ENV"
           echo "ready=true" >> "$GITHUB_OUTPUT"
 
-      - uses: actions/setup-java@v4
-        if: steps.key.outputs.ready == 'true'
-        with:
-          distribution: temurin
-          java-version: "17"
       - uses: android-actions/setup-android@v3
         if: steps.key.outputs.ready == 'true'
         with:

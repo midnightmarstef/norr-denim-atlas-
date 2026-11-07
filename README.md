@@ -14,11 +14,12 @@ and tap the downloaded file.
 3. Next time the app opens it sees the newer build and offers **Download**. Tap the file to install over the old app; saved listings stay.
 
 ## Signing key
-`signing/norr-release.p12.enc` is the app's signing key, encrypted (AES-256). The workflow unlocks it with the
-repository secret `NORR_SIGNING_PASSPHRASE` (Settings → Secrets and variables → Actions). Without that secret the
-workflow skips the build and leaves the current release in place.
-Keep the passphrase somewhere safe as well: every update must be signed with this same key, or Android
-will refuse to install it over the existing app.
+Releases are signed with one permanent NORR key so each update installs over the last.
+The key is created by the workflow on its first run and stored only encrypted (AES-256) as
+`signing/norr-release.p12.enc`, locked with the repository secret `NORR_SIGNING_PASSPHRASE`
+(Settings → Secrets and variables → Actions). Without that secret the workflow skips the build.
+Keep the passphrase in your password manager too: if the secret is ever lost, updates can't be signed
+with the same key and the app would have to be reinstalled.
 
 ## Build locally instead
 Open this folder in Android Studio and choose **Build → Build APK(s)**. A local build uses the debug key,
