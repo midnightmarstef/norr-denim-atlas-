@@ -6,7 +6,7 @@ A WebView shell around `app/src/main/assets/index.html` (the satellite edition o
 Every push to `main` runs **Build APK** (GitHub Actions), which publishes `norr-atlas.apk` as the
 release tagged `latest`:
 
-    https://github.com/<owner>/norr-denim-atlas/releases/latest/download/norr-atlas.apk
+    https://github.com/midnightmarstef/norr-denim-atlas-/releases/latest/download/norr-atlas.apk
 
 Open that link on the phone, download, tap the file, allow "install from this source" once.
 
